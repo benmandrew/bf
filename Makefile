@@ -3,7 +3,7 @@
 all: bin/main
 
 bin/main: src/main.c build_dir
-	gcc -o $@ $<
+	gcc -std=c17 -o $@ $<
 
 build_dir:
 	mkdir -p bin
