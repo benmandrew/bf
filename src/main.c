@@ -13,9 +13,6 @@ struct context_t {
 
 struct context_t init_context(char* program) {
   char* data = malloc(256 * sizeof(char));
-  for (int i = 0; i < 256; i++) {
-    data[i] = 0;
-  }
   return (struct context_t) {
     .pc = 0,
     .program = program,
