@@ -1,4 +1,4 @@
-.PHONY: all clean test fmt debug
+.PHONY: all clean test fmt fmt-ci debug
 
 CFLAGS := -std=c17
 
@@ -31,6 +31,9 @@ $(BUILD_DIR):
 
 fmt:
 	clang-format -i $(shell find $(SRC_DIR) -name "*.c" -o -name "*.h")
+
+fmt-ci:
+	clang-format --dry-run -Werror -i $(shell find $(SRC_DIR) -name "*.c" -o -name "*.h")
 
 clean:
 	rm -f $(TARGET)
