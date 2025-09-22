@@ -28,6 +28,8 @@ struct context_t init_context(char *program) {
 }
 
 void interp_l_brac(struct context_t *ctx) {
+        printf("LBRAC pc=%u dp=%u data=%u\n", ctx->pc, ctx->dp,
+               ctx->data[ctx->dp]);
         if (ctx->data[ctx->dp] == 0) {
                 assert(ctx->pc < ctx->program_len);
                 int matching = 0;
@@ -46,6 +48,8 @@ void interp_l_brac(struct context_t *ctx) {
 }
 
 void interp_r_brac(struct context_t *ctx) {
+        printf("RBRAC pc=%u dp=%u data=%u\n", ctx->pc, ctx->dp,
+               ctx->data[ctx->dp]);
         if (ctx->data[ctx->dp] != 0) {
                 assert(ctx->pc < ctx->program_len);
                 int matching = 0;

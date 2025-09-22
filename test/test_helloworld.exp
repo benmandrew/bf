@@ -2,6 +2,6 @@
 
 source ./test/util.exp
 
-spawn ./build/main ./test/helloworld.b
+spawn ./build/main ./test/res/helloworld.b
 
 expect_exact "Hello, World!"

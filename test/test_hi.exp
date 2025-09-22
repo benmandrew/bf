@@ -2,6 +2,6 @@
 
 source ./test/util.exp
 
-spawn ./build/main ./test/hi.b
+spawn ./build/main ./test/res/hi.b
 
 expect_exact "Hi"
