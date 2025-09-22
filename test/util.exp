@@ -1,0 +1,13 @@
+proc expect_exact {text} {
+	expect {
+		-exact $text {}
+		timeout {
+			puts "Expected: '$text'"
+			exit 1
+		}
+		eof {
+			puts "Program ended too early (wanted '$text')"
+			exit 1
+		}
+	}
+}

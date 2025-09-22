@@ -1,1 +1,1 @@
-char* read_file(char*);
+char *read_file(char *);

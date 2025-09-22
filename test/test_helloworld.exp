@@ -1,0 +1,7 @@
+#!/usr/bin/expect -f
+
+source ./test/util.exp
+
+spawn ./build/main ./test/helloworld.b
+
+expect_exact "Hello, World!"

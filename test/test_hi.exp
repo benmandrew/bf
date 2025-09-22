@@ -1,0 +1,7 @@
+#!/usr/bin/expect -f
+
+source ./test/util.exp
+
+spawn ./build/main ./test/hi.b
+
+expect_exact "Hi"

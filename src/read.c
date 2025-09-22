@@ -2,25 +2,21 @@
 #include <stdlib.h>
 
 // Clean whitespace and other extraneous characters from a BF program
-char* clean(char* s) {
+char *clean(char *s) {
         long len = 0, i = 0;
         while (s[i] != '\0') {
-                if (s[i] == '+' || s[i] == '-' ||
-                    s[i] == '>' || s[i] == '<' ||
-                    s[i] == '.' || s[i] == ',' ||
-                    s[i] == '[' || s[i] == ']') {
+                if (s[i] == '+' || s[i] == '-' || s[i] == '>' || s[i] == '<' ||
+                    s[i] == '.' || s[i] == ',' || s[i] == '[' || s[i] == ']') {
                         len++;
                 }
                 i++;
         }
-        char* program = malloc(len + 1);
+        char *program = malloc(len + 1);
         long j = 0;
         i = 0;
         while (s[i] != '\0') {
-                if (s[i] == '+' || s[i] == '-' ||
-                    s[i] == '>' || s[i] == '<' ||
-                    s[i] == '.' || s[i] == ',' ||
-                    s[i] == '[' || s[i] == ']') {
+                if (s[i] == '+' || s[i] == '-' || s[i] == '>' || s[i] == '<' ||
+                    s[i] == '.' || s[i] == ',' || s[i] == '[' || s[i] == ']') {
                         program[j] = s[i];
                         j++;
                 }
@@ -30,7 +26,7 @@ char* clean(char* s) {
         return program;
 }
 
-char* read_file(char* fname) {
+char *read_file(char *fname) {
         FILE *f = fopen(fname, "r");
         if (f == NULL) {
                 printf("Opening '%s' failed\n", fname);
@@ -42,7 +38,7 @@ char* read_file(char* fname) {
         fread(s, len, 1, f);
         fclose(f);
         s[len] = '\0';
-        char* program = clean(s);
+        char *program = clean(s);
         free(s);
         return program;
 }

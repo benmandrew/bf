@@ -1,16 +1,36 @@
-.PHONY: all clean test
+.PHONY: all clean test fmt debug
 
-CFLAGS := -g -std=c17
+CFLAGS := -std=c17
 
-SRC_FILES := src/main.c src/read.c src/interp.c
+BUILD_DIR = build
+SRC_DIR = src
+TESTS_DIR = test
+TARGET = $(BUILD_DIR)/main
 
-all: bin/main
+SOURCES := $(wildcard $(SRC_DIR)/*.c)
+TESTS := $(wildcard $(TESTS_DIR)/test_*.exp)
 
-bin/main: $(SRC_FILES)
+all: $(TARGET)
+
+debug: CFLAGS += -g
+debug: $(TARGET)
+
+$(TARGET): $(SOURCES) | $(BUILD_DIR)
 	gcc $(CFLAGS) -o $@ $^
 
-test: bin/main
-	./test/test.sh
+test: $(TARGET)
+	@echo "Running all expect tests..."
+	@for t in $(TESTS); do \
+		echo "Running $$t..."; \
+		expect $$t || { echo "Test $$t FAILED"; exit 1; }; \
+	done
+	@echo "All tests passed!"
+
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+fmt:
+	clang-format -i $(shell find $(SRC_DIR) -name "*.c" -o -name "*.h")
 
 clean:
-	rm -f bin/main
+	rm -f $(TARGET)
