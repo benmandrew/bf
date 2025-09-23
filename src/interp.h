@@ -7,4 +7,4 @@ struct context_t {
 };
 
 struct context_t init_context(char *);
-int interp(struct context_t *ctx, int);
+int interp(struct context_t *ctx);

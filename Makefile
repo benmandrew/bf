@@ -1,6 +1,6 @@
 .PHONY: all clean test fmt fmt-ci debug
 
-CFLAGS := -std=c17
+CFLAGS := -std=c17 -Wall -Wextra -Werror -pedantic -O2
 
 BUILD_DIR = build
 SRC_DIR = src
