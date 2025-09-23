@@ -1,3 +1,6 @@
+#ifndef INTERP_H
+#define INTERP_H
+
 struct context_t {
         unsigned int pc;
         char *program;
@@ -7,4 +10,6 @@ struct context_t {
 };
 
 struct context_t init_context(char *);
-int interp(struct context_t *ctx);
+int interp(struct context_t *ctx, int, int);
+
+#endif

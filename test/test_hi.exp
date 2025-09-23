@@ -5,5 +5,16 @@ log_user 0
 source ./test/util.exp
 
 spawn ./build/main ./test/res/hi.b
-
 expect_exact "Hi"
+
+spawn ./build/main ./test/res/hi_n.b
+send "1\n"
+expect_exact "Hi"
+
+spawn ./build/main ./test/res/hi_n.b
+send "2\n"
+expect_exact "HiHi"
+
+spawn ./build/main ./test/res/hi_n.b
+send "9\n"
+expect_exact "HiHiHiHiHiHiHiHiHi"

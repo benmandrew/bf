@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
         }
         char *program = read_file(argv[1]);
         struct context_t ctx = init_context(program);
-        while (!interp(&ctx))
+        while (!interp(&ctx, STDOUT_FILENO, STDIN_FILENO))
                 ;
         free(program);
         printf("\n");
