@@ -21,14 +21,14 @@ $(TARGET): $(SOURCES) | $(BUILD_DIR)
 	gcc $(CFLAGS) -o $@ $^
 
 $(TESTTARGET): $(TESTS) | $(BUILD_DIR)
-	gcc $(CFLAGS) -o $@ $^ -lcheck -lm -lpthread -lrt -lsubunit
+	gcc $(CFLAGS) -g -o $@ $^ -lcheck -lm -lpthread -lrt -lsubunit
 
 test: expecttest unittest
 
 unittest: $(TESTTARGET)
 	./$(TESTTARGET)
 
-expecttest: $(TARGET)
+expecttest: debug
 	@echo "Running all expect tests..."
 	@for t in $(EXPECTTESTS); do \
 		echo "Running $$t..."; \

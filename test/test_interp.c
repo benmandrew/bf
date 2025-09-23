@@ -14,9 +14,11 @@ START_TEST(test_inc_and_dp) {
     ck_assert_int_eq(ctx.data[0], 1);
     ck_assert_int_eq(result, 0);
     while (!interp(&ctx, NOFD, NOFD));
-    ck_assert_int_eq(ctx.data[0], 2);
-    ck_assert_int_eq(ctx.data[1], 3);
-    ck_assert_int_eq(ctx.dp, 1);
+    ck_assert_str_eq(context_to_string(&ctx),
+        "PC: 8\n"
+        "    2 3 0 \n"
+        "DP:   ^\n"
+    );
 } END_TEST
 
 START_TEST(test_loop) {
@@ -24,9 +26,11 @@ START_TEST(test_loop) {
     char *program = "+++[>+++++<-]>";
     struct context_t ctx = init_context(program);
     while (!interp(&ctx, NOFD, NOFD));
-    ck_assert_int_eq(ctx.data[0], 0);
-    ck_assert_int_eq(ctx.data[1], 15);
-    ck_assert_int_eq(ctx.dp, 1);
+    ck_assert_str_eq(context_to_string(&ctx),
+        "PC: 14\n"
+        "    0 15 \n"
+        "DP:   ^\n"
+    );
 } END_TEST
 
 Suite *suite(void) {

@@ -29,23 +29,39 @@ struct context_t init_context(char *program) {
                                   .data = data};
 }
 
-void print_state(struct context_t *ctx) {
-        printf("PC: %u\n", ctx->pc);
+char *context_to_string(struct context_t *ctx) {
+        char *out = malloc(20 + max_dp * 2 * 4);
+        char *front = out;
+        char intermediate[20];
+        sprintf(intermediate, "PC: %u\n    ", ctx->pc);
+        size_t len = strlen(intermediate);
+        memcpy(out, intermediate, len);
+        out += len;
         unsigned int i;
-        for (i = 0; i < max_dp; i++) {
-                printf("%u ", ctx->data[i]);
+        for (i = 0; i <= max_dp; i++) {
+                sprintf(intermediate, "%u ", ctx->data[i]);
+                len = strlen(intermediate);
+                memcpy(out, intermediate, len);
+                out += len;
         }
-        printf("\n");
-        for (i = 0; i + 1 < ctx->dp; i++) {
+        memcpy(out, "\nDP: ", 5);
+        out += 5;
+        for (i = 0; i < ctx->dp; i++) {
                 if (ctx->data[i] >= 100) {
-                        printf("    ");
+                        memcpy(out, "    ", 4);
+                        out += 4;
                 } else if (ctx->data[i] >= 10) {
-                        printf("   ");
+                        memcpy(out, "   ", 3);
+                        out += 3;
                 } else {
-                        printf("  ");
+                        memcpy(out, "  ", 2);
+                        out += 2;
                 }
         }
-        printf("^\n");
+        out[0] = '^';
+        out[1] = '\n';
+        out[2] = '\0';
+        return front;
 }
 
 void interp_l_brac(struct context_t *ctx) {
