@@ -1,6 +1,7 @@
 #ifndef INTERP_H
 #define INTERP_H
 
+#include <stdbool.h>
 #include <unistd.h>
 
 struct context_t {
@@ -12,7 +13,7 @@ struct context_t {
 };
 
 struct context_t init_context(char *);
-int interp(struct context_t *ctx, int, int);
+int interp(struct context_t *ctx, int, int, bool);
 char *context_to_string(struct context_t *ctx);
 
 #endif

@@ -1,7 +1,6 @@
 #include "interp.h"
 
 #include <assert.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -106,11 +105,33 @@ void interp_r_brac(struct context_t *ctx) {
         }
 }
 
-int interp(struct context_t *ctx, int out_fd, int in_fd) {
+void interp_dot(struct context_t *ctx, int out_fd, bool byte_output) {
+        if (byte_output) {
+                fprintf(stdout, "%u", ctx->data[ctx->dp]);
+
+        } else {
+                int ret = write(out_fd, &ctx->data[ctx->dp], 1);
+                if (ret < 0) {
+                        fprintf(stderr, "Write error %d: '%c'\n", ret,
+                                ctx->data[ctx->dp]);
+                        exit(1);
+                }
+        }
+}
+
+void interp_comma(struct context_t *ctx, int in_fd) {
+        char c_in;
+        int ret = read(in_fd, &c_in, 1);
+        if (ret <= 0) {
+                fprintf(stderr, "Read error %d\n", ret);
+                exit(1);
+        }
+        ctx->data[ctx->dp] = c_in;
+}
+
+int interp(struct context_t *ctx, int out_fd, int in_fd, bool byte_output) {
         assert(ctx->pc < ctx->program_len);
         char c = ctx->program[ctx->pc];
-        char c_in;
-        int ret;
         switch (c) {
         case '+':
                 ctx->data[ctx->dp]++;
@@ -136,20 +157,10 @@ int interp(struct context_t *ctx, int out_fd, int in_fd) {
                 interp_r_brac(ctx);
                 break;
         case '.':
-                ret = write(out_fd, &ctx->data[ctx->dp], 1);
-                if (ret < 0) {
-                        fprintf(stderr, "Write error %d: '%c'\n", ret,
-                                ctx->data[ctx->dp]);
-                        exit(1);
-                }
+                interp_dot(ctx, out_fd, byte_output);
                 break;
         case ',':
-                ret = read(in_fd, &c_in, 1);
-                if (ret <= 0) {
-                        fprintf(stderr, "Read error %d\n", ret);
-                        exit(1);
-                }
-                ctx->data[ctx->dp] = c_in;
+                interp_comma(ctx, in_fd);
                 break;
         default:
                 fprintf(stderr, "Invalid character '%c'\n", c);

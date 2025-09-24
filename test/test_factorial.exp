@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+
+log_user 0
+
+source ./test/util.exp
+
+spawn ./build/main --byte-output ./test/res/factorial.b
+
+send "2\r"
+
+expect_exact "2"
+
+spawn ./build/main --byte-output ./test/res/factorial.b
+
+send "3\r"
+
+expect_exact "6"
+
+spawn ./build/main --byte-output ./test/res/factorial.b
+
+send "4\r"
+
+expect_exact "24"
+
+spawn ./build/main --byte-output ./test/res/factorial.b
+
+send "5\r"
+
+expect_exact "120"
+
+spawn ./build/main --byte-output ./test/res/factorial.b
+
+send "6\r"
+
+# 720 mod 256 = 208
+expect_exact "208"
