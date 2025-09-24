@@ -5,14 +5,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #define DATA_SIZE (65536)
 
 static unsigned char data[DATA_SIZE] = {0};
 static bool context_initialized = false;
 
-static unsigned int max_dp = 0;
+static size_t max_dp = 0;
 
 struct context_t init_context(char *program) {
         if (!context_initialized) {
@@ -30,17 +29,25 @@ struct context_t init_context(char *program) {
 }
 
 char *context_to_string(struct context_t *ctx) {
-        char *out = malloc(20 + max_dp * 2 * 4);
+        char *out = malloc(ctx->program_len + 1000 + max_dp * 2 * 4);
         char *front = out;
-        char intermediate[20];
-        sprintf(intermediate, "PC: %u\n    ", ctx->pc);
-        size_t len = strlen(intermediate);
-        memcpy(out, intermediate, len);
-        out += len;
-        unsigned int i;
+        memcpy(out, "---\n    ", 8);
+        out += 8;
+        memcpy(out, ctx->program, ctx->program_len);
+        out += ctx->program_len;
+        memcpy(out, "\nPC: ", 5);
+        out += 5;
+        size_t i;
+        for (i = 0; i < ctx->pc; i++) {
+                out[i] = ' ';
+        }
+        out += ctx->pc;
+        memcpy(out, "^\n    ", 6);
+        out += 6;
+        char intermediate[5];
         for (i = 0; i <= max_dp; i++) {
                 sprintf(intermediate, "%u ", ctx->data[i]);
-                len = strlen(intermediate);
+                size_t len = strlen(intermediate);
                 memcpy(out, intermediate, len);
                 out += len;
         }
@@ -65,8 +72,8 @@ char *context_to_string(struct context_t *ctx) {
 }
 
 void interp_l_brac(struct context_t *ctx) {
+        assert(ctx->pc < ctx->program_len);
         if (ctx->data[ctx->dp] == 0) {
-                assert(ctx->pc < ctx->program_len);
                 int matching = 0;
                 while (ctx->program[ctx->pc] != ']' || matching > 0) {
                         if (ctx->program[ctx->pc] == '[' && matching > 0) {
@@ -75,28 +82,27 @@ void interp_l_brac(struct context_t *ctx) {
                                 assert(matching > 0);
                                 matching--;
                         }
-                        assert(ctx->pc < ctx->program_len - 1);
                         ctx->pc++;
                 }
-                assert(ctx->pc < ctx->program_len);
         }
 }
 
 void interp_r_brac(struct context_t *ctx) {
+        assert(ctx->pc > 0);
+        assert(ctx->pc < ctx->program_len);
         if (ctx->data[ctx->dp] != 0) {
-                assert(ctx->pc < ctx->program_len);
+                ctx->pc--;
                 int matching = 0;
                 while (ctx->program[ctx->pc] != '[' || matching > 0) {
-                        if (ctx->program[ctx->pc] == ']' && matching > 0) {
+                        if (ctx->program[ctx->pc] == ']') {
                                 matching++;
-                        } else if (ctx->program[ctx->pc] == '[') {
-                                assert(matching > 0);
+                        } else if (ctx->program[ctx->pc] == '[' &&
+                                   matching > 0) {
                                 matching--;
                         }
                         assert(ctx->pc > 0);
                         ctx->pc--;
                 }
-                assert(ctx->pc < ctx->program_len);
         }
 }
 
@@ -104,6 +110,7 @@ int interp(struct context_t *ctx, int out_fd, int in_fd) {
         assert(ctx->pc < ctx->program_len);
         char c = ctx->program[ctx->pc];
         char c_in;
+        int ret;
         switch (c) {
         case '+':
                 ctx->data[ctx->dp]++;
@@ -112,8 +119,8 @@ int interp(struct context_t *ctx, int out_fd, int in_fd) {
                 ctx->data[ctx->dp]--;
                 break;
         case '>':
+                assert(ctx->dp < DATA_SIZE - 1);
                 ctx->dp++;
-                assert(ctx->dp < DATA_SIZE);
                 if (ctx->dp > max_dp) {
                         max_dp = ctx->dp;
                 }
@@ -129,16 +136,20 @@ int interp(struct context_t *ctx, int out_fd, int in_fd) {
                 interp_r_brac(ctx);
                 break;
         case '.':
-                if (write(out_fd, &ctx->data[ctx->dp], 1) < 0) {
-                        fprintf(stderr, "Write error '%c'\n",
+                ret = write(out_fd, &ctx->data[ctx->dp], 1);
+                if (ret < 0) {
+                        fprintf(stderr, "Write error %d: '%c'\n", ret,
                                 ctx->data[ctx->dp]);
                         exit(1);
                 }
                 break;
         case ',':
-                if (read(in_fd, &c_in, 1) > 0) {
-                        ctx->data[ctx->dp] = c_in;
+                ret = read(in_fd, &c_in, 1);
+                if (ret <= 0) {
+                        fprintf(stderr, "Read error %d\n", ret);
+                        exit(1);
                 }
+                ctx->data[ctx->dp] = c_in;
                 break;
         default:
                 fprintf(stderr, "Invalid character '%c'\n", c);

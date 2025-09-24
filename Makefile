@@ -40,10 +40,10 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 fmt:
-	clang-format -i $(shell find $(SRC_DIR) -name "*.c" -o -name "*.h")
+	clang-format -i $(shell find $(SRC_DIR) $(TESTS_DIR) -name "*.c" -o -name "*.h")
 
 fmt-ci:
-	clang-format --dry-run -Werror -i $(shell find $(SRC_DIR) -name "*.c" -o -name "*.h")
+	clang-format --dry-run -Werror -i $(shell find $(SRC_DIR) $(TESTS_DIR) -name "*.c" -o -name "*.h")
 
 clean:
 	rm -rf $(BUILD_DIR)

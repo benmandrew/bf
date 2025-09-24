@@ -1,11 +1,13 @@
 #ifndef INTERP_H
 #define INTERP_H
 
+#include <unistd.h>
+
 struct context_t {
-        unsigned int pc;
+        size_t pc;
         char *program;
-        unsigned int program_len;
-        unsigned int dp;
+        size_t program_len;
+        size_t dp;
         unsigned char *data;
 };
 
