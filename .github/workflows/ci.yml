@@ -20,7 +20,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y expect
+        run: sudo apt-get update && sudo apt-get install -y expect check
       - name: Build
         run: make all
       - name: Test
