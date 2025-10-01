@@ -5,30 +5,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DATA_SIZE (65536)
-
-static unsigned char data[DATA_SIZE] = {0};
-static bool context_initialized = false;
-
-static size_t max_dp = 0;
-
 struct context_t init_context(char *program) {
-        if (!context_initialized) {
-                context_initialized = true;
-        } else {
-                fprintf(stderr,
-                        "Error: Context can only be initialized once\n");
-                exit(1);
-        }
-        return (struct context_t){.pc = 0,
-                                  .program = program,
-                                  .program_len = strlen(program),
-                                  .dp = 0,
-                                  .data = data};
+        struct context_t c = (struct context_t){.pc = 0,
+                                                .program = program,
+                                                .program_len = strlen(program),
+                                                .dp = 0,
+                                                .max_dp = 0};
+        memset(c.data, 0, DATA_SIZE);
+        return c;
 }
 
 char *context_to_string(struct context_t *ctx) {
-        char *out = malloc(ctx->program_len + 1000 + max_dp * 2 * 4);
+        char *out = malloc(ctx->program_len + 1000 + ctx->max_dp * 2 * 4);
         char *front = out;
         memcpy(out, "---\n    ", 8);
         out += 8;
@@ -44,7 +32,7 @@ char *context_to_string(struct context_t *ctx) {
         memcpy(out, "^\n    ", 6);
         out += 6;
         char intermediate[5];
-        for (i = 0; i <= max_dp; i++) {
+        for (i = 0; i <= ctx->max_dp; i++) {
                 sprintf(intermediate, "%u ", ctx->data[i]);
                 size_t len = strlen(intermediate);
                 memcpy(out, intermediate, len);
@@ -142,8 +130,8 @@ int interp(struct context_t *ctx, int out_fd, int in_fd, bool byte_output) {
         case '>':
                 assert(ctx->dp < DATA_SIZE - 1);
                 ctx->dp++;
-                if (ctx->dp > max_dp) {
-                        max_dp = ctx->dp;
+                if (ctx->dp > ctx->max_dp) {
+                        ctx->max_dp = ctx->dp;
                 }
                 break;
         case '<':
