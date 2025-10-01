@@ -23,7 +23,7 @@ $(TARGET): $(SOURCES) | $(BUILD_DIR)
 $(TESTTARGET): $(TESTS) | $(BUILD_DIR)
 	gcc $(CFLAGS) -g -o $@ $^ -lcheck -lm -lpthread -lrt -lsubunit
 
-test: expecttest unittest
+test: unittest expecttest
 
 unittest: $(TESTTARGET)
 	./$(TESTTARGET)
