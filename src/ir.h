@@ -18,7 +18,7 @@ struct cmd {
         enum cmd_type type;
         union {
                 size_t simple_count;
-                struct cmd *jump_loc;
+                size_t jump_index;
         };
 };
 
@@ -28,6 +28,7 @@ struct program {
 };
 
 struct program string_to_program(char *s);
+char cmd_type_to_char(enum cmd_type t);
 char *program_to_string(struct program *program);
 
 #endif

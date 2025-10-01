@@ -4,12 +4,13 @@
 #include <stdlib.h>
 
 #include "../src/interp.h"
+#include "../src/ir.h"
 
 #define NOFD -1
 
 START_TEST(test_inc_and_dp) {
-        char *program = "++>+++><";
-        struct context_t ctx = init_context(program);
+        struct program p = string_to_program("++>+++><");
+        struct context_t ctx = init_context(p);
         ck_assert_int_eq(ctx.data[0], 0);
         int result = interp(&ctx, NOFD, NOFD, false);
         ck_assert_int_eq(ctx.data[0], 1);
@@ -28,8 +29,8 @@ END_TEST
 
 START_TEST(test_loop) {
         // Multiply 3 by 5
-        char *program = "+++[>+++++<-]>";
-        struct context_t ctx = init_context(program);
+        struct program p = string_to_program("+++[>+++++<-]>");
+        struct context_t ctx = init_context(p);
         while (!interp(&ctx, NOFD, NOFD, false))
                 ;
         char *str = context_to_string(&ctx);
@@ -43,8 +44,8 @@ START_TEST(test_loop) {
 END_TEST
 
 START_TEST(test_nested_loop) {
-        char *program = "++[>++[>++<-]<-]";
-        struct context_t ctx = init_context(program);
+        struct program p = string_to_program("++[>++[>++<-]<-]");
+        struct context_t ctx = init_context(p);
         while (!interp(&ctx, NOFD, NOFD, false))
                 ;
         char *str = context_to_string(&ctx);

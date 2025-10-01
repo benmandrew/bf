@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include "interp.h"
+#include "ir.h"
 #include "read.h"
 
 void print_usage(const char *program_name) {
@@ -63,14 +64,15 @@ int parse_options(int argc, char **argv, bool *byte_output, char **program) {
 
 int main(int argc, char **argv) {
         bool byte_output = false;
-        char *program = NULL;
-        if (parse_options(argc, argv, &byte_output, &program) != 0) {
+        char *program_str = NULL;
+        if (parse_options(argc, argv, &byte_output, &program_str) != 0) {
                 return 1;
         }
-        struct context_t ctx = init_context(program);
+        struct program p = string_to_program(program_str);
+        free(program_str);
+        struct context_t ctx = init_context(p);
         while (!interp(&ctx, STDOUT_FILENO, STDIN_FILENO, byte_output))
                 ;
-        free(program);
         printf("\n");
         return 0;
 }

@@ -7,8 +7,13 @@
 
 #define JUMP_STACK_MAX_SIZE (128)
 
+struct jump_stack_frame {
+        struct cmd *c;
+        size_t index;
+};
+
 struct jump_stack {
-        struct cmd *stack[JUMP_STACK_MAX_SIZE];
+        struct jump_stack_frame stack[JUMP_STACK_MAX_SIZE];
         size_t head;
 };
 
@@ -18,23 +23,32 @@ static struct jump_stack jump_stack_new() {
         };
 }
 
-static void jump_stack_push(struct jump_stack *js, struct cmd *c) {
+static void jump_stack_push(struct jump_stack *js, struct cmd *c,
+                            size_t index) {
         assert(js->head < JUMP_STACK_MAX_SIZE - 1);
-        js->stack[js->head] = c;
+        js->stack[js->head] = (struct jump_stack_frame){
+            .c = c,
+            .index = index,
+        };
         js->head++;
 }
 
-static struct cmd *jump_stack_pop(struct jump_stack *js) {
+static struct jump_stack_frame jump_stack_pop(struct jump_stack *js) {
         assert(js->head > 0);
         js->head--;
         return js->stack[js->head];
 }
 
-int string_to_program_aux(char *s, struct cmd *cmd_arena) {
+struct program string_to_program(char *s) {
+        size_t max_cmds = strlen(s);
+        struct cmd *cmd_arena = malloc(max_cmds * sizeof(struct cmd));
+        if (!cmd_arena) {
+                fprintf(stderr, "Memory allocation failed\n");
+                exit(1);
+        }
         struct jump_stack js = jump_stack_new();
-        struct cmd *back_jump;
+        struct jump_stack_frame back_jump_frame;
         int program_len = strlen(s);
-        int body_len = 0;
         int arena_i = 0;
         for (int i = 0; i < program_len; i++) {
                 switch (s[i]) {
@@ -64,65 +78,54 @@ int string_to_program_aux(char *s, struct cmd *cmd_arena) {
                         break;
                 case '[':
                         cmd_arena[arena_i] = (struct cmd){
-                            .type = CMD_JUMP_FORWARD, .jump_loc = NULL};
-                        jump_stack_push(&js, &cmd_arena[arena_i]);
+                            .type = CMD_JUMP_FORWARD, .jump_index = 0};
+                        jump_stack_push(&js, &cmd_arena[arena_i], arena_i);
                         break;
                 case ']':
-                        back_jump = jump_stack_pop(&js);
-                        cmd_arena[arena_i] = (struct cmd){
-                            .type = CMD_JUMP_BACK, .jump_loc = back_jump};
-                        back_jump->jump_loc = &cmd_arena[arena_i];
+                        back_jump_frame = jump_stack_pop(&js);
+                        cmd_arena[arena_i] =
+                            (struct cmd){.type = CMD_JUMP_BACK,
+                                         .jump_index = back_jump_frame.index};
+                        back_jump_frame.c->jump_index = i;
                         break;
                 default:
                         fprintf(stderr, "Invalid character '%c'\n", s[i]);
                         exit(1);
                 }
                 arena_i++;
-                body_len++;
         }
-        return body_len;
+        assert(js.head == 0);
+        return (struct program){.cmds = cmd_arena, .length = arena_i};
 }
 
-struct program string_to_program(char *s) {
-        size_t max_cmds = strlen(s);
-        struct cmd *cmd_arena = malloc(max_cmds * sizeof(struct cmd));
-        if (!cmd_arena) {
-                fprintf(stderr, "Memory allocation failed\n");
+char cmd_type_to_char(enum cmd_type t) {
+        switch (t) {
+        case CMD_SIMPLE_INC:
+                return '+';
+        case CMD_SIMPLE_DEC:
+                return '-';
+        case CMD_SIMPLE_RIGHT:
+                return '>';
+        case CMD_SIMPLE_LEFT:
+                return '<';
+        case CMD_SIMPLE_OUTPUT:
+                return '.';
+        case CMD_SIMPLE_INPUT:
+                return ',';
+        case CMD_JUMP_FORWARD:
+                return '[';
+        case CMD_JUMP_BACK:
+                return ']';
+        default:
+                fprintf(stderr, "Unrecognised cmd_type '%c'\n", t);
                 exit(1);
         }
-        int length = string_to_program_aux(s, cmd_arena);
-        return (struct program){.cmds = cmd_arena, .length = length};
 }
 
 char *program_to_string(struct program *program) {
         char *out = malloc(program->length * sizeof(char) + 1);
         for (size_t i = 0; i < program->length; i++) {
-                switch (program->cmds[i].type) {
-                case CMD_SIMPLE_INC:
-                        out[i] = '+';
-                        break;
-                case CMD_SIMPLE_DEC:
-                        out[i] = '-';
-                        break;
-                case CMD_SIMPLE_RIGHT:
-                        out[i] = '>';
-                        break;
-                case CMD_SIMPLE_LEFT:
-                        out[i] = '<';
-                        break;
-                case CMD_SIMPLE_OUTPUT:
-                        out[i] = '.';
-                        break;
-                case CMD_SIMPLE_INPUT:
-                        out[i] = ',';
-                        break;
-                case CMD_JUMP_FORWARD:
-                        out[i] = '[';
-                        break;
-                case CMD_JUMP_BACK:
-                        out[i] = ']';
-                        break;
-                }
+                out[i] = cmd_type_to_char(program->cmds[i].type);
         }
         out[program->length] = '\0';
         return out;
