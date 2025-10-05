@@ -11,17 +11,34 @@ jobs:
       - name: Install clang-format
         run: sudo apt-get update && sudo apt-get install -y clang-format
       - name: Check code formatting
-        run: make fmt-ci
+        run: |
+          mkdir -p build
+          cmake -B build -S .
+          cmake --build build --target fmt-ci
 
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        build_type: [Release, Debug]
+    runs-on: ${{ matrix.os }}
     needs: fmt
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y expect check
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y expect check llvm-dev cmake
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install expect check llvm cmake
+      - name: Configure CMake
+        run: |
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
       - name: Build
-        run: make all
+        run: cmake --build build --config ${{ matrix.build_type }}
       - name: Test
-        run: make test
+        run: cmake --build build --target test
