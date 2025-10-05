@@ -1,32 +1,36 @@
 .PHONY: all clean test expecttest unittest fmt fmt-ci debug
 
-CFLAGS := -std=c17 -Wall -Wextra -Werror -pedantic -O2
-
 BUILD_DIR = build
 SRC_DIR = src
 TESTS_DIR = test
 TARGET = $(BUILD_DIR)/main
-TESTTARGET = $(BUILD_DIR)/test_runner
-
-SOURCES := $(wildcard $(SRC_DIR)/*.c)
-TESTS := $(wildcard $(TESTS_DIR)/*.c) $(filter-out src/main.c,$(SOURCES))
-EXPECTTESTS := $(wildcard $(TESTS_DIR)/test_*.exp)
 
 all: $(TARGET)
+
+CFLAGS := -std=gnu17 -Wall -Wextra -Werror -O2
 
 debug: CFLAGS += -g
 debug: $(TARGET)
 
+SOURCES := $(wildcard $(SRC_DIR)/*.c)
+
 $(TARGET): $(SOURCES) | $(BUILD_DIR)
 	gcc $(CFLAGS) -o $@ $^
 
+TESTTARGET = $(BUILD_DIR)/test_runner
+TESTS := $(wildcard $(TESTS_DIR)/*.c) $(filter-out src/main.c,$(SOURCES))
+CHECK_CFLAGS := $(shell pkg-config --cflags check)
+CHECK_LIBS   := $(shell pkg-config --libs check)
+
 $(TESTTARGET): $(TESTS) | $(BUILD_DIR)
-	gcc $(CFLAGS) -g -o $@ $^ -lcheck -lm -lpthread -lrt -lsubunit
+	gcc $(CFLAGS) $(CHECK_CFLAGS) -g -o $@ $^ $(CHECK_LIBS)
 
 test: unittest expecttest
 
 unittest: $(TESTTARGET)
 	./$(TESTTARGET)
+
+EXPECTTESTS := $(wildcard $(TESTS_DIR)/test_*.exp)
 
 expecttest: debug
 	@echo "Running all expect tests..."
