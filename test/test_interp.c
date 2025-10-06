@@ -13,7 +13,7 @@ START_TEST(test_inc_and_dp) {
         struct context_t ctx = init_context(p);
         ck_assert_int_eq(ctx.data[0], 0);
         int result = interp(&ctx, NOFD, NOFD, false);
-        ck_assert_int_eq(ctx.data[0], 1);
+        ck_assert_int_eq(ctx.data[0], 2);
         ck_assert_int_eq(result, 0);
         while (!interp(&ctx, NOFD, NOFD, false))
                 ;
@@ -24,6 +24,7 @@ START_TEST(test_inc_and_dp) {
                               "    2 3 0 \n"
                               "DP:   ^\n");
         free(str);
+        free(p.cmds);
 }
 END_TEST
 
@@ -40,6 +41,7 @@ START_TEST(test_loop) {
                               "    0 15 \n"
                               "DP:   ^\n");
         free(str);
+        free(p.cmds);
 }
 END_TEST
 
@@ -55,6 +57,7 @@ START_TEST(test_nested_loop) {
                               "    0 0 8 \n"
                               "DP: ^\n");
         free(str);
+        free(p.cmds);
 }
 END_TEST
 

@@ -12,21 +12,65 @@ struct context_t init_context(struct program p) {
         return c;
 }
 
+// Convert an abstract program counter `pc` (index into cmds array) to a
+// concrete PC (index into the string representation of the program)
+size_t abstract_to_concrete_pc(size_t pc, struct program *p) {
+        assert(pc <= p->length);
+        size_t concrete_pc = 0;
+        for (size_t i = 0; i < pc; i++) {
+                switch (p->cmds[i].type) {
+                case CMD_SIMPLE_INC:
+                case CMD_SIMPLE_DEC:
+                case CMD_SIMPLE_RIGHT:
+                case CMD_SIMPLE_LEFT:
+                case CMD_SIMPLE_OUTPUT:
+                case CMD_SIMPLE_INPUT:
+                        concrete_pc += p->cmds[i].simple_count;
+                        break;
+                case CMD_JUMP_FORWARD:
+                case CMD_JUMP_BACK:
+                        concrete_pc++;
+                        break;
+                default:
+                        fprintf(stderr, "Unrecognised cmd_type '%c'\n",
+                                p->cmds[i].type);
+                        exit(1);
+                }
+        }
+        return concrete_pc;
+}
+
 char *context_to_string(struct context_t *ctx) {
-        char *out = malloc(ctx->p.length + 1000 + ctx->max_dp * 2 * 4);
+        size_t program_length = program_str_length(&ctx->p);
+        size_t concrete_pc = abstract_to_concrete_pc(ctx->pc, &ctx->p);
+        size_t buffer_size = 8                       // "---\n    "
+                             + program_length        // program string
+                             + 5                     // "\nPC: "
+                             + concrete_pc           // spaces for PC
+                             + 6                     // "^\n    "
+                             + (ctx->max_dp + 1) * 4 // data values (max "255 ")
+                             + 5                     // "\nDP: "
+                             + ctx->dp * 4 // spaces for DP (max 4 per position)
+                             + 3;          // "^\n\0"
+        char *out = malloc(buffer_size);
+        if (!out) {
+                fprintf(stderr, "Memory allocation failed\n");
+                exit(1);
+        }
         char *front = out;
         memcpy(out, "---\n    ", 8);
         out += 8;
         char *program_string = program_to_string(&ctx->p);
-        memcpy(out, program_string, ctx->p.length);
-        out += ctx->p.length;
+        memcpy(out, program_string, program_length);
+        free(program_string);
+        out += program_length;
         memcpy(out, "\nPC: ", 5);
         out += 5;
         size_t i;
-        for (i = 0; i < ctx->pc; i++) {
+        for (i = 0; i < concrete_pc; i++) {
                 out[i] = ' ';
         }
-        out += ctx->pc;
+        out += concrete_pc;
         memcpy(out, "^\n    ", 6);
         out += 6;
         char intermediate[5];
@@ -101,12 +145,14 @@ int interp(struct context_t *ctx, int out_fd, int in_fd, bool byte_output) {
                 ctx->dp -= c.simple_count;
                 break;
         case CMD_SIMPLE_OUTPUT:
-                assert(c.simple_count == 1);
-                interp_dot(ctx, out_fd, byte_output);
+                for (size_t i = 0; i < c.simple_count; i++) {
+                        interp_dot(ctx, out_fd, byte_output);
+                }
                 break;
         case CMD_SIMPLE_INPUT:
-                assert(c.simple_count == 1);
-                interp_comma(ctx, in_fd);
+                for (size_t i = 0; i < c.simple_count; i++) {
+                        interp_comma(ctx, in_fd);
+                }
                 break;
         case CMD_JUMP_FORWARD:
                 if (ctx->data[ctx->dp] == 0) {

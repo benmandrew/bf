@@ -27,7 +27,9 @@ struct program {
         size_t length;
 };
 
+size_t program_str_length(struct program *p);
 struct program string_to_program(char *s);
+void free_program(struct program *p);
 char cmd_type_to_char(enum cmd_type t);
 char *program_to_string(struct program *program);
 

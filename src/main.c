@@ -73,6 +73,7 @@ int main(int argc, char **argv) {
         struct context_t ctx = init_context(p);
         while (!interp(&ctx, STDOUT_FILENO, STDIN_FILENO, byte_output))
                 ;
+        free(p.cmds);
         printf("\n");
         return 0;
 }
