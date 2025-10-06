@@ -1,6 +1,4 @@
-# Brainfuck Interpreter with LLVM Support
-
-This project has been converted from Make to CMake to support LLVM IR builder functionality.
+# `bf` - Brainf*ck LLVM compiler
 
 ## Dependencies
 
@@ -9,8 +7,6 @@ This project has been converted from Make to CMake to support LLVM IR builder fu
 - Check framework (for unit tests)
 - expect (for integration tests)
 - clang-format (optional, for code formatting)
-
-### Installing Dependencies
 
 #### Ubuntu/Debian
 ```bash
@@ -44,8 +40,6 @@ After building, the executable will be in the `build` directory:
 ./build/bf examples/hello.b
 ```
 
-## Testing
-
 ### Tests
 ```bash
 make -C build test
@@ -56,12 +50,3 @@ make -C build test
 ```bash
 make -C build fmt
 ```
-
-## LLVM Integration
-
-The CMake build system automatically finds and links LLVM libraries. The following LLVM components are included:
-- `support` - Basic LLVM support utilities
-- `core` - LLVM core IR functionality
-- `irreader` - LLVM IR reading capabilities
-
-You can extend this by modifying the `llvm_map_components_to_libnames` call in CMakeLists.txt.
