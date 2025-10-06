@@ -4,6 +4,6 @@ log_user 0
 
 source ./test/util.exp
 
-spawn ./build/main ./test/res/helloworld.b
+spawn ./build/bf ./test/res/helloworld.b
 
 expect_exact "Hello, World!"
