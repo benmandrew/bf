@@ -1,0 +1,32 @@
+---
+Checks: >
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  misc-*,
+  performance-*,
+  portability-*,
+  -misc-unused-parameters,
+  -clang-analyzer-security*,
+  -cert-err34-c,
+  -cert-err33-c,
+  -bugprone-easily-swappable-parameters
+
+CheckOptions:
+  - key: readability-identifier-naming.VariableCase
+    value: snake_case
+  - key: readability-identifier-naming.FunctionCase
+    value: snake_case
+  - key: readability-identifier-naming.MacroCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.EnumCase
+    value: snake_case
+  - key: readability-identifier-naming.StructCase
+    value: snake_case
+  - key: performance-unnecessary-value-param.IncludeStyle
+    value: llvm
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*'
+FormatStyle: none

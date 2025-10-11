@@ -125,6 +125,29 @@ else()
     message(WARNING "clang-format not found, formatting targets will not be available")
 endif()
 
+# Lint target with clang-tidy
+find_program(CLANG_TIDY clang-tidy)
+if(CLANG_TIDY)
+    file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.c")
+    add_custom_target(lint
+        COMMAND ${CLANG_TIDY} ${LINT_SOURCE_FILES}
+            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
+            -- -I${CMAKE_SOURCE_DIR}/src ${LLVM_DEFINITIONS_LIST}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running clang-tidy on source files"
+    )
+    add_custom_target(lint-fix
+        COMMAND ${CLANG_TIDY} ${LINT_SOURCE_FILES}
+            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
+            --fix
+            -- -I${CMAKE_SOURCE_DIR}/src ${LLVM_DEFINITIONS_LIST}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running clang-tidy with auto-fix on source files"
+    )
+else()
+    message(WARNING "clang-tidy not found, lint targets will not be available")
+endif()
+
 add_custom_target(clean-all
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target clean
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}
