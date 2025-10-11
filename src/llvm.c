@@ -4,13 +4,18 @@
 #include "common.h"
 #include "llvm.h"
 
+struct llvm_function {
+        LLVMValueRef func;
+        LLVMTypeRef type;
+};
+
 struct llvm_context {
         LLVMModuleRef module;
         LLVMBuilderRef builder;
         LLVMValueRef dp;
         LLVMValueRef data;
-        LLVMValueRef putchar_func;
-        LLVMTypeRef putchar_func_type;
+        struct llvm_function putchar;
+        struct llvm_function getchar;
 };
 
 LLVMValueRef index_data(struct llvm_context *ctx) {
@@ -68,17 +73,38 @@ void dot(struct llvm_context *ctx) {
             ctx->builder, LLVMInt8Type(), data_ptr, "current_val");
         LLVMValueRef extended_value = LLVMBuildZExt(
             ctx->builder, current_value, LLVMInt32Type(), "extended_val");
-        LLVMBuildCall2(ctx->builder, ctx->putchar_func_type, ctx->putchar_func,
-                       &extended_value, 1, "calltmp");
+        LLVMBuildCall2(ctx->builder, ctx->putchar.type, ctx->putchar.func,
+                       &extended_value, 1, "callputchar_tmp");
+}
+
+void comma(struct llvm_context *ctx) {
+        LLVMValueRef data_ptr = index_data(ctx);
+        LLVMValueRef getchar_result =
+            LLVMBuildCall2(ctx->builder, ctx->getchar.type, ctx->getchar.func,
+                           NULL, 0, "callgetchar_tmp");
+        LLVMValueRef char_value = LLVMBuildTrunc(ctx->builder, getchar_result,
+                                                 LLVMInt8Type(), "char_val");
+        LLVMBuildStore(ctx->builder, char_value, data_ptr);
+}
+
+void create_putchar_declaration(struct llvm_context *ctx) {
+        ctx->putchar.type = LLVMFunctionType(
+            LLVMInt32Type(), (LLVMTypeRef[]){LLVMInt32Type()}, 1, 0);
+        ctx->putchar.func =
+            LLVMAddFunction(ctx->module, "putchar", ctx->putchar.type);
+}
+
+void create_getchar_declaration(struct llvm_context *ctx) {
+        ctx->getchar.type = LLVMFunctionType(LLVMInt32Type(), NULL, 0, 0);
+        ctx->getchar.func =
+            LLVMAddFunction(ctx->module, "getchar", ctx->getchar.type);
 }
 
 struct llvm_context create_module_preamble(const char *name) {
         struct llvm_context ctx;
         ctx.module = LLVMModuleCreateWithName(name);
-        ctx.putchar_func_type = LLVMFunctionType(
-            LLVMInt32Type(), (LLVMTypeRef[]){LLVMInt32Type()}, 1, 0);
-        ctx.putchar_func =
-            LLVMAddFunction(ctx.module, "putchar", ctx.putchar_func_type);
+        create_putchar_declaration(&ctx);
+        create_getchar_declaration(&ctx);
         ctx.dp = LLVMAddGlobal(ctx.module, LLVMInt32Type(), "dp");
         LLVMSetInitializer(ctx.dp, LLVMConstNull(LLVMInt32Type()));
         ctx.data = LLVMAddGlobal(
@@ -124,6 +150,11 @@ LLVMModuleRef generate(struct program *p) {
                 case CMD_SIMPLE_OUTPUT:
                         for (size_t j = 0; j < c.simple_count; j++) {
                                 dot(&ctx);
+                        }
+                        break;
+                case CMD_SIMPLE_INPUT:
+                        for (size_t j = 0; j < c.simple_count; j++) {
+                                comma(&ctx);
                         }
                         break;
                 default:
