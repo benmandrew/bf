@@ -1,4 +1,4 @@
-# `bf` - Brainf*ck LLVM compiler
+# Brainf*ck LLVM compiler
 
 ## Dependencies
 
@@ -50,3 +50,11 @@ make -C build test
 ```bash
 make -C build fmt
 ```
+
+## Useful Links for Learning the LLVM Intermediate Representation
+
+Compiling to the LLVM IR is a niche topic, and it is hard to find resources for learning. Here are a few useful ones I found:
+
+- https://mapping-high-level-constructs-to-llvm-ir.readthedocs.io/en/latest/
+- https://mukulrathi.com/create-your-own-programming-language/llvm-ir-cpp-api-tutorial/
+- https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/
