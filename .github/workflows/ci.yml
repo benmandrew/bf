@@ -19,12 +19,17 @@ jobs:
       - name: Cache APT packages
         uses: actions/cache@v4
         with:
-          path: /var/cache/apt/archives
+          path: ~/.cache/apt-archives
           key: ${{ runner.os }}-apt-clang-format-${{ hashFiles('**/ci.yml') }}
           restore-keys: |
             ${{ runner.os }}-apt-clang-format-
       - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+        run: |
+          mkdir -p ~/.cache/apt-archives
+          sudo apt-get update
+          sudo apt-get install -y --download-only clang-format
+          cp /var/cache/apt/archives/*.deb ~/.cache/apt-archives/ 2>/dev/null || true
+          sudo apt-get install -y clang-format
       - name: Check code formatting
         run: |
           mkdir -p build
@@ -43,7 +48,7 @@ jobs:
       - name: Cache APT packages
         uses: actions/cache@v4
         with:
-          path: /var/cache/apt/archives
+          path: ~/.cache/apt-archives
           key: ${{ runner.os }}-apt-deps-${{ matrix.build_type }}-${{ hashFiles('**/ci.yml') }}
           restore-keys: |
             ${{ runner.os }}-apt-deps-${{ matrix.build_type }}-
@@ -60,7 +65,15 @@ jobs:
             ${{ runner.os }}-cmake-
       - name: Install dependencies
         run: |
+          mkdir -p ~/.cache/apt-archives
+          # Restore cached packages if available
+          if [ -d ~/.cache/apt-archives ] && [ "$(ls -A ~/.cache/apt-archives)" ]; then
+            sudo cp ~/.cache/apt-archives/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+          fi
           sudo apt-get update
+          sudo apt-get install -y --download-only expect check llvm-dev cmake ccache
+          # Cache the downloaded packages
+          cp /var/cache/apt/archives/*.deb ~/.cache/apt-archives/ 2>/dev/null || true
           sudo apt-get install -y expect check llvm-dev cmake ccache
       - name: Setup ccache
         run: |
