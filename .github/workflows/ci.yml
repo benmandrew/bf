@@ -1,6 +1,14 @@
 name: Build and Test
 
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+      - '.gitignore'
+  pull_request:
+    paths-ignore:
+      - '*.md'
+      - '.gitignore'
 
 jobs:
   fmt:
@@ -8,6 +16,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-clang-format-${{ hashFiles('**/ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-clang-format-
       - name: Install clang-format
         run: sudo apt-get update && sudo apt-get install -y clang-format
       - name: Check code formatting
@@ -25,10 +40,34 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-deps-${{ matrix.build_type }}-${{ hashFiles('**/ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-deps-${{ matrix.build_type }}-
+            ${{ runner.os }}-apt-deps-
+      - name: Cache CMake build
+        uses: actions/cache@v4
+        with:
+          path: |
+            build
+            ~/.cache/ccache
+          key: ${{ runner.os }}-cmake-${{ matrix.build_type }}-${{ hashFiles('**/CMakeLists.txt', 'src/**', 'test/**') }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-${{ matrix.build_type }}-
+            ${{ runner.os }}-cmake-
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y expect check llvm-dev cmake
+          sudo apt-get install -y expect check llvm-dev cmake ccache
+      - name: Setup ccache
+        run: |
+          echo "/usr/lib/ccache" >> $GITHUB_PATH
+          ccache --set-config=cache_dir=~/.cache/ccache
+          ccache --set-config=max_size=500M
+          ccache --zero-stats
       - name: Configure CMake
         run: |
           cmake -B build -S . -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
