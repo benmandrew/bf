@@ -1,12 +1,11 @@
 #ifndef INTERP_H
 #define INTERP_H
 
+#include "common.h"
 #include "ir.h"
 
 #include <stdbool.h>
 #include <unistd.h>
-
-#define DATA_SIZE (65536)
 
 struct context_t {
         size_t pc;
