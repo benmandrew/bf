@@ -12,8 +12,13 @@ struct llvm_function {
 
 #define JUMP_STACK_MAX_SIZE (128)
 
+struct entry_exit_pair {
+        LLVMBasicBlockRef entry;
+        LLVMBasicBlockRef exit;
+};
+
 struct llvm_jump_stack {
-        LLVMBasicBlockRef stack[JUMP_STACK_MAX_SIZE];
+        struct entry_exit_pair stack[JUMP_STACK_MAX_SIZE];
         size_t head;
 };
 
@@ -23,13 +28,15 @@ static struct llvm_jump_stack jump_stack_new() {
         };
 }
 
-static void jump_stack_push(struct llvm_jump_stack *js, LLVMBasicBlockRef c) {
+static void jump_stack_push(struct llvm_jump_stack *js, LLVMBasicBlockRef entry,
+                            LLVMBasicBlockRef exit) {
         assert(js->head < JUMP_STACK_MAX_SIZE - 1);
-        js->stack[js->head] = c;
+        js->stack[js->head].entry = entry;
+        js->stack[js->head].exit = exit;
         js->head++;
 }
 
-static LLVMBasicBlockRef jump_stack_pop(struct llvm_jump_stack *js) {
+static struct entry_exit_pair jump_stack_pop(struct llvm_jump_stack *js) {
         assert(js->head > 0);
         js->head--;
         return js->stack[js->head];
@@ -38,6 +45,7 @@ static LLVMBasicBlockRef jump_stack_pop(struct llvm_jump_stack *js) {
 struct llvm_context {
         LLVMModuleRef module;
         LLVMBuilderRef builder;
+        LLVMValueRef main;
         LLVMValueRef dp;
         LLVMValueRef data;
         struct llvm_jump_stack js;
@@ -78,21 +86,13 @@ void dispose_module(LLVMModuleRef module) { LLVMDisposeModule(module); }
 
 void create_main_function(struct llvm_context *ctx) {
         LLVMTypeRef main_type = LLVMFunctionType(LLVMInt32Type(), NULL, 0, 0);
-        LLVMValueRef main = LLVMAddFunction(ctx->module, "main", main_type);
-        LLVMBasicBlockRef entry_block = LLVMAppendBasicBlock(main, "entry");
+        ctx->main = LLVMAddFunction(ctx->module, "main", main_type);
+        LLVMBasicBlockRef entry_block =
+            LLVMAppendBasicBlock(ctx->main, "entry");
         LLVMPositionBuilderAtEnd(ctx->builder, entry_block);
-        LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(main, "exit");
-        jump_stack_push(&ctx->js, exit_block);
 }
 
-void finalise_main_function(struct llvm_context *ctx) {
-        LLVMBasicBlockRef exit_block = jump_stack_pop(&ctx->js);
-        LLVMBuildBr(ctx->builder, exit_block);
-        LLVMPositionBuilderAtEnd(ctx->builder, exit_block);
-        LLVMBuildRet(ctx->builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
-}
-
-LLVMValueRef index_data(struct llvm_context *ctx) {
+LLVMValueRef get_dataptr(struct llvm_context *ctx) {
         LLVMValueRef dp_value =
             LLVMBuildLoad2(ctx->builder, LLVMInt32Type(), ctx->dp, "dptmp");
         LLVMValueRef indices[] = {LLVMConstInt(LLVMInt32Type(), 0, 0),
@@ -104,7 +104,7 @@ LLVMValueRef index_data(struct llvm_context *ctx) {
 }
 
 void add(struct llvm_context *ctx, size_t value) {
-        LLVMValueRef data_ptr = index_data(ctx);
+        LLVMValueRef data_ptr = get_dataptr(ctx);
         LLVMValueRef current_value = LLVMBuildLoad2(
             ctx->builder, LLVMInt8Type(), data_ptr, "current_val");
         LLVMValueRef new_value =
@@ -114,7 +114,7 @@ void add(struct llvm_context *ctx, size_t value) {
 }
 
 void sub(struct llvm_context *ctx, size_t value) {
-        LLVMValueRef data_ptr = index_data(ctx);
+        LLVMValueRef data_ptr = get_dataptr(ctx);
         LLVMValueRef current_value = LLVMBuildLoad2(
             ctx->builder, LLVMInt8Type(), data_ptr, "current_val");
         LLVMValueRef new_value =
@@ -142,7 +142,7 @@ void left(struct llvm_context *ctx, size_t value) {
 }
 
 void dot(struct llvm_context *ctx) {
-        LLVMValueRef data_ptr = index_data(ctx);
+        LLVMValueRef data_ptr = get_dataptr(ctx);
         LLVMValueRef current_value = LLVMBuildLoad2(
             ctx->builder, LLVMInt8Type(), data_ptr, "current_val");
         LLVMValueRef extended_value = LLVMBuildZExt(
@@ -152,7 +152,7 @@ void dot(struct llvm_context *ctx) {
 }
 
 void comma(struct llvm_context *ctx) {
-        LLVMValueRef data_ptr = index_data(ctx);
+        LLVMValueRef data_ptr = get_dataptr(ctx);
         LLVMValueRef getchar_result =
             LLVMBuildCall2(ctx->builder, ctx->getchar.type, ctx->getchar.func,
                            NULL, 0, "callgetchar_tmp");
@@ -161,15 +161,30 @@ void comma(struct llvm_context *ctx) {
         LLVMBuildStore(ctx->builder, char_value, data_ptr);
 }
 
-void left_bracket(struct llvm_context *ctx, LLVMBasicBlockRef loop_body,
-                  LLVMBasicBlockRef after_loop) {
-        LLVMValueRef data_ptr = index_data(ctx);
+void left_bracket(struct llvm_context *ctx) {
+        LLVMValueRef data_ptr = get_dataptr(ctx);
         LLVMValueRef current_value = LLVMBuildLoad2(
             ctx->builder, LLVMInt8Type(), data_ptr, "current_val");
         LLVMValueRef condition =
             LLVMBuildICmp(ctx->builder, LLVMIntNE, current_value,
                           LLVMConstInt(LLVMInt8Type(), 0, 0), "loopcond");
-        LLVMBuildCondBr(ctx->builder, condition, loop_body, after_loop);
+        LLVMBasicBlockRef entry = LLVMAppendBasicBlock(ctx->main, "entry");
+        LLVMBasicBlockRef exit = LLVMAppendBasicBlock(ctx->main, "exit");
+        jump_stack_push(&ctx->js, entry, exit);
+        LLVMBuildCondBr(ctx->builder, condition, entry, exit);
+        LLVMPositionBuilderAtEnd(ctx->builder, entry);
+}
+
+void right_bracket(struct llvm_context *ctx) {
+        struct entry_exit_pair pair = jump_stack_pop(&ctx->js);
+        LLVMValueRef data_ptr = get_dataptr(ctx);
+        LLVMValueRef current_value = LLVMBuildLoad2(
+            ctx->builder, LLVMInt8Type(), data_ptr, "current_val");
+        LLVMValueRef condition =
+            LLVMBuildICmp(ctx->builder, LLVMIntNE, current_value,
+                          LLVMConstInt(LLVMInt8Type(), 0, 0), "loopcond");
+        LLVMBuildCondBr(ctx->builder, condition, pair.entry, pair.exit);
+        LLVMPositionBuilderAtEnd(ctx->builder, pair.exit);
 }
 
 LLVMModuleRef generate(struct program *p) {
@@ -200,12 +215,18 @@ LLVMModuleRef generate(struct program *p) {
                                 comma(&ctx);
                         }
                         break;
+                case CMD_JUMP_FORWARD:
+                        left_bracket(&ctx);
+                        break;
+                case CMD_JUMP_BACK:
+                        right_bracket(&ctx);
+                        break;
                 default:
                         fprintf(stderr, "Unsupported cmd_type '%c'\n", c.type);
                         exit(1);
                 }
         }
-        finalise_main_function(&ctx);
+        LLVMBuildRet(ctx.builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
         LLVMDisposeBuilder(ctx.builder);
         return ctx.module;
 }
