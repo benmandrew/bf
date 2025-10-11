@@ -107,8 +107,8 @@ struct program string_to_program(char *s) {
         }
         struct jump_stack js = jump_stack_new();
         struct jump_stack_frame back_jump_frame;
-        int program_len = strlen(s);
-        int arena_i = 0, str_i = 0;
+        size_t program_len = strlen(s);
+        size_t arena_i = 0, str_i = 0;
         for (str_i = 0; str_i < program_len; str_i++) {
                 switch (s[str_i]) {
                 case '+':

@@ -67,6 +67,16 @@ include_directories(${LLVM_INCLUDE_DIRS})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
+# Debug: Print LLVM configuration
+message(STATUS "LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
+message(STATUS "LLVM_LIBRARY_DIRS: ${LLVM_LIBRARY_DIRS}")
+message(STATUS "LLVM_DEFINITIONS: ${LLVM_DEFINITIONS}")
+
+# Use LLVM's library directory for linking
+if(LLVM_LIBRARY_DIRS)
+    link_directories(${LLVM_LIBRARY_DIRS})
+endif()
+
 llvm_map_components_to_libnames(llvm_libs support core irreader)
 
 set(LLVM_AVAILABLE TRUE)

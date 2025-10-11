@@ -1,17 +1,11 @@
 ---
 Checks: >
-  -*,
-  bugprone-*,
-  cert-*,
+  clang-diagnostic-*,
   clang-analyzer-*,
-  misc-*,
-  performance-*,
-  portability-*,
-  -misc-unused-parameters,
-  -clang-analyzer-security*,
-  -cert-err34-c,
-  -cert-err33-c,
-  -bugprone-easily-swappable-parameters
+  cppcoreguidelines-*,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
 CheckOptions:
   - key: readability-identifier-naming.VariableCase

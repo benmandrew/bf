@@ -38,6 +38,11 @@ char *read_file(char *fname) {
         }
         fseek(f, 0, SEEK_END);
         long len = ftell(f);
+        if (len < 0) {
+                fprintf(stderr, "Getting file size for '%s' failed\n", fname);
+                fclose(f);
+                exit(1);
+        }
         fseek(f, 0, SEEK_SET);
         char *s = malloc(len + 1);
         if (fread(s, len, 1, f) == 0) {

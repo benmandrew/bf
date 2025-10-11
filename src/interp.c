@@ -104,9 +104,9 @@ void interp_dot(struct context_t *ctx, int out_fd, bool byte_output) {
         if (byte_output) {
                 fprintf(stdout, "%u", ctx->data[ctx->dp]);
         } else {
-                int ret = write(out_fd, &ctx->data[ctx->dp], 1);
+                ssize_t ret = write(out_fd, &ctx->data[ctx->dp], 1);
                 if (ret < 0) {
-                        fprintf(stderr, "Write error %d: '%c'\n", ret,
+                        fprintf(stderr, "Write error %zd: '%c'\n", ret,
                                 ctx->data[ctx->dp]);
                         exit(1);
                 }
@@ -115,9 +115,9 @@ void interp_dot(struct context_t *ctx, int out_fd, bool byte_output) {
 
 void interp_comma(struct context_t *ctx, int in_fd) {
         char c_in;
-        int ret = read(in_fd, &c_in, 1);
+        ssize_t ret = read(in_fd, &c_in, 1);
         if (ret <= 0) {
-                fprintf(stderr, "Read error %d\n", ret);
+                fprintf(stderr, "Read error %zd\n", ret);
                 exit(1);
         }
         ctx->data[ctx->dp] = c_in;
