@@ -71,16 +71,33 @@ jobs:
             sudo cp ~/.cache/apt-archives/*.deb /var/cache/apt/archives/ 2>/dev/null || true
           fi
           sudo apt-get update
-          sudo apt-get install -y --download-only expect check llvm-dev cmake ccache
+          sudo apt-get install -y --download-only expect check llvm-dev llvm cmake ccache
           # Cache the downloaded packages
           cp /var/cache/apt/archives/*.deb ~/.cache/apt-archives/ 2>/dev/null || true
-          sudo apt-get install -y expect check llvm-dev cmake ccache
+          sudo apt-get install -y expect check llvm-dev llvm cmake ccache
       - name: Setup ccache
         run: |
           echo "/usr/lib/ccache" >> $GITHUB_PATH
           ccache --set-config=cache_dir=~/.cache/ccache
           ccache --set-config=max_size=500M
           ccache --zero-stats
+      - name: Setup LLVM tools
+        run: |
+          # Find LLVM tools directory and add to PATH
+          LLVM_DIR=$(find /usr/lib -name "llvm-*" -type d | head -1)
+          if [ -n "$LLVM_DIR" ]; then
+            echo "$LLVM_DIR/bin" >> $GITHUB_PATH
+            echo "Found LLVM directory: $LLVM_DIR"
+            ls -la "$LLVM_DIR/bin/" || true
+          fi
+          # Also try common locations
+          echo "/usr/bin" >> $GITHUB_PATH
+          # List all available LLVM tools
+          echo "Available LLVM tools:"
+          ls /usr/bin/llvm-* 2>/dev/null || echo "No llvm-* tools found in /usr/bin"
+          ls /usr/bin/*filecheck* 2>/dev/null || echo "No *filecheck* tools found in /usr/bin"
+          # Check which package provides FileCheck
+          apt-cache search filecheck || true
       - name: Configure CMake
         run: |
           cmake -B build -S . -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}

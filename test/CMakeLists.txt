@@ -54,8 +54,9 @@ else()
     )
 endif()
 
-find_program(FILECHECK FileCheck)
+find_program(FILECHECK NAMES FileCheck llvm-filecheck filecheck PATHS /usr/bin /usr/lib/llvm-*/bin)
 if(FILECHECK AND LLVM_AVAILABLE)
+    message(STATUS "Found FileCheck at: ${FILECHECK}")
     file(GLOB FILECHECK_TESTS "*.filecheck")
     if(FILECHECK_TESTS)
         add_custom_target(filecheck
