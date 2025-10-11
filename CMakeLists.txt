@@ -45,12 +45,7 @@ if(NOT LLVM_FOUND)
                         "\n"
                         "Ubuntu/Debian:\n"
                         "  sudo apt-get install llvm-dev\n"
-                        "\n"
-                        "Fedora/RHEL:\n"
-                        "  sudo dnf install llvm-devel\n"
-                        "\n"
-                        "Or set LLVM_DIR manually:\n"
-                        "  cmake -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm ..\n")
+                        "\n")
 endif()
 
 set(CMAKE_C_STANDARD 17)
@@ -89,10 +84,17 @@ target_include_directories(bf_lib PUBLIC src)
 target_link_libraries(bf_lib ${llvm_libs})
 target_compile_definitions(bf_lib PUBLIC LLVM_AVAILABLE)
 
-add_executable(bf src/main.c)
-target_link_libraries(bf bf_lib)
+add_executable(bfi src/main_bfi.c)
+target_link_libraries(bfi bf_lib)
+set_target_properties(bfi bf_lib 
+    PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
 
-set_target_properties(bf bf_lib 
+add_executable(bfc src/main_bfc.c)
+target_link_libraries(bfc bf_lib)
+set_target_properties(bfc bf_lib 
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -125,7 +127,6 @@ else()
     message(WARNING "clang-format not found, formatting targets will not be available")
 endif()
 
-# Lint target with clang-tidy
 find_program(CLANG_TIDY clang-tidy)
 if(CLANG_TIDY)
     file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.c")

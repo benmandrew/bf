@@ -13,31 +13,23 @@
 void print_usage(const char *program_name) {
         printf("Usage: %s [OPTIONS] <input_file>\n", program_name);
         printf("Options:\n");
-        printf("  -b, --byte-output    Output bytes as numbers instead of "
-               "characters\n");
-        printf(
-            "  -e, --emit-llvm      Generate LLVM IR instead of executing\n");
+        printf("  -O, --optimise          Enable optimisations\n");
         printf("  -h, --help           Show this help message\n");
         printf("\nArguments:\n");
-        printf("  input_file           Brainfuck source file to execute\n");
+        printf("  input_file           Brainfuck source file to compile\n");
 }
 
-static struct option long_options[] = {{"byte-output", no_argument, 0, 'b'},
-                                       {"emit-llvm", no_argument, 0, 'e'},
+static struct option long_options[] = {{"optimise", no_argument, 0, 'O'},
                                        {"help", no_argument, 0, 'h'},
                                        {0, 0, 0, 0}};
 
-int parse_options(int argc, char **argv, bool *byte_output, bool *emit_llvm,
-                  char **program) {
+int parse_options(int argc, char **argv, bool *optimise, char **program) {
         int opt;
-        while ((opt = getopt_long(argc, argv, "beh", long_options, NULL)) !=
+        while ((opt = getopt_long(argc, argv, "Oh", long_options, NULL)) !=
                -1) {
                 switch (opt) {
-                case 'b':
-                        *byte_output = true;
-                        break;
-                case 'e':
-                        *emit_llvm = true;
+                case 'O':
+                        *optimise = true;
                         break;
                 case 'h':
                         print_usage(argv[0]);
@@ -68,26 +60,18 @@ int parse_options(int argc, char **argv, bool *byte_output, bool *emit_llvm,
 }
 
 int main(int argc, char **argv) {
-        bool byte_output = false;
-        bool emit_llvm = false;
+        bool optimise = false;
         char *program_str = NULL;
-        if (parse_options(argc, argv, &byte_output, &emit_llvm, &program_str) !=
-            0) {
+        if (parse_options(argc, argv, &optimise, &program_str) != 0) {
                 return 1;
         }
         struct program p = string_to_program(program_str);
         free(program_str);
-        if (emit_llvm) {
-                LLVMModuleRef module = generate(&p);
-                char *module_str = LLVMPrintModuleToString(module);
-                printf("%s", module_str);
-                LLVMDisposeMessage(module_str);
-                dispose_module(module);
-        } else {
-                struct context_t ctx = init_context(p);
-                while (!interp(&ctx, STDOUT_FILENO, STDIN_FILENO, byte_output))
-                        ;
-        }
+        LLVMModuleRef module = generate(&p);
+        char *module_str = LLVMPrintModuleToString(module);
+        printf("%s", module_str);
+        LLVMDisposeMessage(module_str);
+        dispose_module(module);
         free(p.cmds);
         return 0;
 }

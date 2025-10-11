@@ -1,4 +1,6 @@
-# Brainf*ck LLVM compiler
+# Brainf*ck LLVM Compiler Frontend
+
+A compiler frontend for the [Brainf*ck language](https://en.wikipedia.org/wiki/Brainfuck) that outputs code in LLVM Intermediate Representation (IR), which can then be compiled to any desired target architecture with `clang`.
 
 ## Dependencies
 
@@ -10,45 +12,61 @@
 
 #### Ubuntu/Debian
 ```bash
-sudo apt-get install cmake llvm-dev libcheck-dev expect clang-format
+$ sudo apt-get install cmake llvm-dev libcheck-dev expect clang-format
 ```
 
 #### macOS (Homebrew)
 ```bash
-brew install cmake llvm check expect clang-format
+$ brew install cmake llvm check expect clang-format
 ```
 
 ## Building
 
 ```bash
 # Create build directory
-mkdir build
-cd build
+$ mkdir build
+$ cd build
 # Configure (Release mode)
-cmake ..
+$ cmake ..
 # Or configure with debug symbols
-cmake -DCMAKE_BUILD_TYPE=Debug ..
+$ cmake -DCMAKE_BUILD_TYPE=Debug ..
 # Build
-cmake --build .
+$ cmake --build .
 ```
 
 ## Running
 
-After building, the executable will be in the `build` directory:
+After building, the `bfc` (compiler) and `bfi` (interpreter) executables will be in the `build` directory.
+
+### Examples
+
+Compiling to a binary executable:
+
 ```bash
-./build/bf --help
-./build/bf examples/hello.b
+# Generate LLVM IR
+$ ./build/bfc test/res/helloworld.b > main.ll
+# Compile IR to binary
+$ clang main.ll -o main
+$ ./main
+Hello, World!
+```
+
+Executing with the interpreter:
+
+```bash
+$ ./build/bfi test/res/helloworld.b
+Hello, World!
 ```
 
 ### Tests
 ```bash
-make -C build test
+$ cmake --build build --target test
 ```
 
 ### Code Formatting
 
 ```bash
-make -C build fmt
+$ cmake --build build --target fmt
 ```
 
 ## Useful Links for Learning the LLVM Intermediate Representation

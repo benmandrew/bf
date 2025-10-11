@@ -33,7 +33,7 @@ if(EXPECT)
     file(GLOB EXPECT_TESTS "test_*.exp")
     add_custom_target(expecttest
         COMMAND echo "Running all expect tests..."
-        DEPENDS bf
+        DEPENDS bfi
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Running expect tests"
     )
@@ -60,7 +60,7 @@ if(FILECHECK AND LLVM_AVAILABLE)
     if(FILECHECK_TESTS)
         add_custom_target(filecheck
             COMMAND echo "Running all FileCheck tests..."
-            DEPENDS bf
+            DEPENDS bfc
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Running FileCheck tests"
         )
@@ -71,7 +71,7 @@ if(FILECHECK AND LLVM_AVAILABLE)
             if(EXISTS ${input_file})
                 add_custom_command(TARGET filecheck POST_BUILD
                     COMMAND echo "Running FileCheck test: ${test_name}"
-                    COMMAND ${CMAKE_BINARY_DIR}/bf ${input_file} --emit-llvm | ${FILECHECK} ${test_file}
+                    COMMAND ${CMAKE_BINARY_DIR}/bfc ${input_file} | ${FILECHECK} ${test_file}
                     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                     VERBATIM
                 )
