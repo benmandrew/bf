@@ -15,7 +15,7 @@ if(CHECK_FOUND)
     target_compile_options(test_runner PRIVATE ${CHECK_CFLAGS_OTHER})
     target_link_directories(test_runner PRIVATE ${CHECK_LIBRARY_DIRS})
     add_custom_target(unittest
-        COMMAND ./test_runner
+        COMMAND ./test/test_runner
         DEPENDS test_runner
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Running unit tests"

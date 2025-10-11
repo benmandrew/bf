@@ -4,125 +4,134 @@
 #include "common.h"
 #include "llvm.h"
 
-void add(LLVMValueRef dp, LLVMValueRef data, size_t value,
-         LLVMBuilderRef builder) {
+struct llvm_context {
+        LLVMModuleRef module;
+        LLVMBuilderRef builder;
+        LLVMValueRef dp;
+        LLVMValueRef data;
+        LLVMValueRef putchar_func;
+        LLVMTypeRef putchar_func_type;
+};
+
+LLVMValueRef index_data(struct llvm_context *ctx) {
         LLVMValueRef dp_value =
-            LLVMBuildLoad2(builder, LLVMInt32Type(), dp, "dptmp");
+            LLVMBuildLoad2(ctx->builder, LLVMInt32Type(), ctx->dp, "dptmp");
         LLVMValueRef indices[] = {LLVMConstInt(LLVMInt32Type(), 0, 0),
                                   dp_value};
-        LLVMValueRef data_ptr =
-            LLVMBuildGEP2(builder, LLVMArrayType(LLVMInt8Type(), DATA_SIZE),
-                          data, indices, 2, "data_ptr");
-        LLVMValueRef current_value =
-            LLVMBuildLoad2(builder, LLVMInt8Type(), data_ptr, "current_val");
+        LLVMValueRef data_ptr = LLVMBuildGEP2(
+            ctx->builder, LLVMArrayType(LLVMInt8Type(), DATA_SIZE), ctx->data,
+            indices, 2, "data_ptr");
+        return data_ptr;
+}
+
+void add(struct llvm_context *ctx, size_t value) {
+        LLVMValueRef data_ptr = index_data(ctx);
+        LLVMValueRef current_value = LLVMBuildLoad2(
+            ctx->builder, LLVMInt8Type(), data_ptr, "current_val");
         LLVMValueRef new_value =
-            LLVMBuildAdd(builder, current_value,
+            LLVMBuildAdd(ctx->builder, current_value,
                          LLVMConstInt(LLVMInt8Type(), value, 0), "addtmp");
-        LLVMBuildStore(builder, new_value, data_ptr);
+        LLVMBuildStore(ctx->builder, new_value, data_ptr);
 }
 
-void sub(LLVMValueRef dp, LLVMValueRef data, size_t value,
-         LLVMBuilderRef builder) {
-        LLVMValueRef dp_value =
-            LLVMBuildLoad2(builder, LLVMInt32Type(), dp, "dptmp");
-        LLVMValueRef indices[] = {LLVMConstInt(LLVMInt32Type(), 0, 0),
-                                  dp_value};
-        LLVMValueRef data_ptr =
-            LLVMBuildGEP2(builder, LLVMArrayType(LLVMInt8Type(), DATA_SIZE),
-                          data, indices, 2, "data_ptr");
-        LLVMValueRef current_value =
-            LLVMBuildLoad2(builder, LLVMInt8Type(), data_ptr, "current_val");
+void sub(struct llvm_context *ctx, size_t value) {
+        LLVMValueRef data_ptr = index_data(ctx);
+        LLVMValueRef current_value = LLVMBuildLoad2(
+            ctx->builder, LLVMInt8Type(), data_ptr, "current_val");
         LLVMValueRef new_value =
-            LLVMBuildSub(builder, current_value,
+            LLVMBuildSub(ctx->builder, current_value,
                          LLVMConstInt(LLVMInt8Type(), value, 0), "subtmp");
-        LLVMBuildStore(builder, new_value, data_ptr);
+        LLVMBuildStore(ctx->builder, new_value, data_ptr);
 }
 
-void right(LLVMValueRef dp, size_t value, LLVMBuilderRef builder) {
+void right(struct llvm_context *ctx, size_t value) {
         LLVMValueRef dp_value =
-            LLVMBuildLoad2(builder, LLVMInt32Type(), dp, "dptmp");
+            LLVMBuildLoad2(ctx->builder, LLVMInt32Type(), ctx->dp, "dptmp");
         LLVMValueRef new_dp =
-            LLVMBuildAdd(builder, dp_value,
+            LLVMBuildAdd(ctx->builder, dp_value,
                          LLVMConstInt(LLVMInt32Type(), value, 0), "righttmp");
-        LLVMBuildStore(builder, new_dp, dp);
+        LLVMBuildStore(ctx->builder, new_dp, ctx->dp);
 }
 
-void left(LLVMValueRef dp, size_t value, LLVMBuilderRef builder) {
+void left(struct llvm_context *ctx, size_t value) {
         LLVMValueRef dp_value =
-            LLVMBuildLoad2(builder, LLVMInt32Type(), dp, "dptmp");
+            LLVMBuildLoad2(ctx->builder, LLVMInt32Type(), ctx->dp, "dptmp");
         LLVMValueRef new_dp =
-            LLVMBuildSub(builder, dp_value,
+            LLVMBuildSub(ctx->builder, dp_value,
                          LLVMConstInt(LLVMInt32Type(), value, 0), "lefttmp");
-        LLVMBuildStore(builder, new_dp, dp);
+        LLVMBuildStore(ctx->builder, new_dp, ctx->dp);
 }
 
-LLVMModuleRef create_module_preamble(const char *name) {
-        LLVMModuleRef module = LLVMModuleCreateWithName(name);
-        LLVMValueRef dp = LLVMAddGlobal(module, LLVMInt32Type(), "dp");
-        LLVMSetInitializer(dp, LLVMConstNull(LLVMInt32Type()));
-        LLVMValueRef data = LLVMAddGlobal(
-            module, LLVMArrayType(LLVMInt8Type(), DATA_SIZE), "data");
+void dot(struct llvm_context *ctx) {
+        LLVMValueRef data_ptr = index_data(ctx);
+        LLVMValueRef current_value = LLVMBuildLoad2(
+            ctx->builder, LLVMInt8Type(), data_ptr, "current_val");
+        LLVMValueRef extended_value = LLVMBuildZExt(
+            ctx->builder, current_value, LLVMInt32Type(), "extended_val");
+        LLVMBuildCall2(ctx->builder, ctx->putchar_func_type, ctx->putchar_func,
+                       &extended_value, 1, "calltmp");
+}
+
+struct llvm_context create_module_preamble(const char *name) {
+        struct llvm_context ctx;
+        ctx.module = LLVMModuleCreateWithName(name);
+        ctx.putchar_func_type = LLVMFunctionType(
+            LLVMInt32Type(), (LLVMTypeRef[]){LLVMInt32Type()}, 1, 0);
+        ctx.putchar_func =
+            LLVMAddFunction(ctx.module, "putchar", ctx.putchar_func_type);
+        ctx.dp = LLVMAddGlobal(ctx.module, LLVMInt32Type(), "dp");
+        LLVMSetInitializer(ctx.dp, LLVMConstNull(LLVMInt32Type()));
+        ctx.data = LLVMAddGlobal(
+            ctx.module, LLVMArrayType(LLVMInt8Type(), DATA_SIZE), "data");
         LLVMSetInitializer(
-            data, LLVMConstNull(LLVMArrayType(LLVMInt8Type(), DATA_SIZE)));
-        return module;
+            ctx.data, LLVMConstNull(LLVMArrayType(LLVMInt8Type(), DATA_SIZE)));
+        return ctx;
 }
 
-void dispose_module(LLVMModuleRef mod) { LLVMDisposeModule(mod); }
+void dispose_module(LLVMModuleRef module) { LLVMDisposeModule(module); }
 
 LLVMBuilderRef add_basic_block(LLVMValueRef func, const char *block_name) {
         LLVMBasicBlockRef block = LLVMAppendBasicBlock(func, block_name);
-        if (!block) {
-                fprintf(stderr, "Failed to create basic block '%s'\n",
-                        block_name);
-                exit(1);
-        }
         LLVMBuilderRef builder = LLVMCreateBuilder();
-        if (!builder) {
-                fprintf(stderr, "Failed to create LLVM builder\n");
-                exit(1);
-        }
         LLVMPositionBuilderAtEnd(builder, block);
         return builder;
 }
 
 LLVMValueRef add_main_function(LLVMModuleRef mod) {
-        LLVMTypeRef ret_type = LLVMInt32Type();
-        LLVMTypeRef func_type = LLVMFunctionType(ret_type, NULL, 0, 0);
-        LLVMValueRef main = LLVMAddFunction(mod, "main", func_type);
-        if (!main) {
-                fprintf(stderr, "Failed to add main function to module\n");
-                exit(1);
-        }
-        return main;
+        LLVMTypeRef func_type = LLVMFunctionType(LLVMInt32Type(), NULL, 0, 0);
+        return LLVMAddFunction(mod, "main", func_type);
 }
 
 LLVMModuleRef generate(struct program *p) {
-        LLVMModuleRef module = create_module_preamble("main");
-        LLVMValueRef main = add_main_function(module);
-        LLVMBuilderRef builder = add_basic_block(main, "entry");
-        LLVMValueRef dp = LLVMGetNamedGlobal(module, "dp");
-        LLVMValueRef data = LLVMGetNamedGlobal(module, "data");
+        struct llvm_context ctx = create_module_preamble("main");
+        LLVMValueRef main = add_main_function(ctx.module);
+        ctx.builder = add_basic_block(main, "entry");
         for (size_t i = 0; i < p->length; i++) {
                 struct cmd c = p->cmds[i];
                 switch (c.type) {
                 case CMD_SIMPLE_INC:
-                        add(dp, data, c.simple_count, builder);
+                        add(&ctx, c.simple_count);
                         break;
                 case CMD_SIMPLE_DEC:
-                        sub(dp, data, c.simple_count, builder);
+                        sub(&ctx, c.simple_count);
                         break;
                 case CMD_SIMPLE_RIGHT:
-                        right(dp, c.simple_count, builder);
+                        right(&ctx, c.simple_count);
                         break;
                 case CMD_SIMPLE_LEFT:
-                        left(dp, c.simple_count, builder);
+                        left(&ctx, c.simple_count);
+                        break;
+                case CMD_SIMPLE_OUTPUT:
+                        for (size_t j = 0; j < c.simple_count; j++) {
+                                dot(&ctx);
+                        }
                         break;
                 default:
                         fprintf(stderr, "Unsupported cmd_type '%c'\n", c.type);
                         exit(1);
                 }
         }
-        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
-        LLVMDisposeBuilder(builder);
-        return module;
+        LLVMBuildRet(ctx.builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
+        LLVMDisposeBuilder(ctx.builder);
+        return ctx.module;
 }

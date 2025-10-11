@@ -6,6 +6,6 @@
 #include <llvm-c/Core.h>
 
 LLVMModuleRef generate(struct program *p);
-void dispose_module(LLVMModuleRef mod);
+void dispose_module(LLVMModuleRef module);
 
 #endif
