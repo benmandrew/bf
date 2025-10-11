@@ -79,7 +79,9 @@ int main(int argc, char **argv) {
         free(program_str);
         if (emit_llvm) {
                 LLVMModuleRef module = generate(&p);
-                printf("%s", LLVMPrintModuleToString(module));
+                char *module_str = LLVMPrintModuleToString(module);
+                printf("%s", module_str);
+                LLVMDisposeMessage(module_str);
                 dispose_module(module);
         } else {
                 struct context_t ctx = init_context(p);
