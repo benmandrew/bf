@@ -23,7 +23,7 @@ if(CHECK_FOUND)
 else()
     message(WARNING "Check framework not found, unit tests will not be built")
     add_custom_target(unittest
-        COMMAND echo "Unit tests not available (Check framework not found)"
+        COMMAND echo "Unit tests not available - Check framework not found"
         COMMENT "Unit tests disabled"
     )
 endif()
@@ -49,7 +49,7 @@ if(EXPECT)
 else()
     message(WARNING "expect not found, expect tests will not be available")
     add_custom_target(expecttest
-        COMMAND echo "Expect tests not available (expect not found)"
+        COMMAND echo "Expect tests not available - expect not found"
         COMMENT "Expect tests disabled"
     )
 endif()
@@ -82,7 +82,7 @@ if(FILECHECK AND LLVM_AVAILABLE)
     else()
         message(STATUS "No .filecheck files found in test/ directory")
         add_custom_target(filecheck
-            COMMAND echo "FileCheck tests not available (no .filecheck files found)"
+            COMMAND echo "FileCheck tests not available - no .filecheck files found"
             COMMENT "FileCheck tests disabled"
         )
     endif()
@@ -94,7 +94,7 @@ else()
         message(WARNING "LLVM not available, FileCheck tests will not be available")
     endif()
     add_custom_target(filecheck
-        COMMAND echo "FileCheck tests not available (FileCheck not found or LLVM not available)"
+        COMMAND echo "FileCheck tests not available - FileCheck not found or LLVM not available"
         COMMENT "FileCheck tests disabled"
     )
 endif()
