@@ -4,17 +4,17 @@ log_user 0
 
 source ./test/util.exp
 
-spawn ./build/bf ./test/res/hi.b
+spawn ./build/bfi ./test/res/hi.b
 expect_exact "Hi"
 
-spawn ./build/bf ./test/res/hi_n.b
+spawn ./build/bfi ./test/res/hi_n.b
 send "1\n"
 expect_exact "Hi"
 
-spawn ./build/bf ./test/res/hi_n.b
+spawn ./build/bfi ./test/res/hi_n.b
 send "2\n"
 expect_exact "HiHi"
 
-spawn ./build/bf ./test/res/hi_n.b
+spawn ./build/bfi ./test/res/hi_n.b
 send "9\n"
 expect_exact "HiHiHiHiHiHiHiHiHi"
