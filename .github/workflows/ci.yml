@@ -36,12 +36,31 @@ jobs:
           cmake -B build -S .
           cmake --build build --target fmt-ci
 
+  lint:
+    runs-on: ubuntu-latest
+    needs: fmt
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install cpplint
+        run: |
+          python3 -m pip install --user cpplint
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          # Verify installation
+          which cpplint || python3 -m cpplint --version || true
+      - name: Configure CMake
+        run: |
+          cmake -B build -S .
+      - name: Run lint
+        run: |
+          cmake --build build --target lint
+
   test:
     strategy:
       matrix:
         build_type: [Release, Debug]
     runs-on: ubuntu-latest
-    needs: fmt
+    needs: lint
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
