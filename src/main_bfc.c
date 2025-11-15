@@ -5,7 +5,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "interp.h"
 #include "ir.h"
 #include "llvm.h"
 #include "read.h"
