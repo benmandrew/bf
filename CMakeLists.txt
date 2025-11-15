@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(bf VERSION 1.0.0 LANGUAGES C CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(LLVM_POSSIBLE_PATHS
     # Homebrew paths (macOS)
     /opt/homebrew/opt/llvm
@@ -90,6 +92,7 @@ set(LIB_SOURCES
 
 add_library(bf_lib STATIC ${LIB_SOURCES})
 target_include_directories(bf_lib PUBLIC src)
+target_include_directories(bf_lib PUBLIC ${LLVM_INCLUDE_DIRS})
 
 target_link_libraries(bf_lib ${llvm_libs})
 target_compile_definitions(bf_lib PUBLIC LLVM_AVAILABLE)
@@ -166,3 +169,34 @@ add_custom_target(clean-all
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}
     COMMENT "Cleaning all build files"
 )
+
+find_program(EMCC emcc)
+if(EMCC)
+    message(STATUS "Found emcc: ${EMCC} - adding 'emscripten' target")
+    set(EM_SOURCES ${LIB_SOURCES} src/main_bfc.c)
+    # Build emscripten bundle. Avoid shell line-continuation and complex quoting in CMake
+    set(EMCC_ARGS
+        ${EM_SOURCES}
+        -O2
+        -sEXPORTED_FUNCTIONS='_compile_program'
+        -sEXPORTED_RUNTIME_METHODS='cwrap'
+        -sMODULARIZE=1
+        -sEXPORT_NAME='bfc'
+        -I ${LLVM_INCLUDE_DIRS}
+        -o ${CMAKE_BINARY_DIR}/bfc.js
+    )
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/bfc.js ${CMAKE_BINARY_DIR}/bfc.wasm
+        COMMAND ${EMCC} ${EMCC_ARGS}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Building emscripten JS/WASM bundle (bfc.js, bfc.wasm)"
+        VERBATIM
+    )
+    add_custom_target(emscripten ALL DEPENDS ${CMAKE_BINARY_DIR}/bfc.js ${CMAKE_BINARY_DIR}/bfc.wasm)
+else()
+    message(STATUS "emcc not found - 'emscripten' target will be unavailable")
+    add_custom_target(emscripten
+        COMMAND echo "emcc not found, emscripten target unavailable"
+        COMMENT "Emscripten build disabled"
+    )
+endif()

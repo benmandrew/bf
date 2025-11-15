@@ -5,7 +5,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "interp.h"
 #include "ir.h"
 #include "llvm.h"
 #include "read.h"
@@ -59,19 +58,24 @@ int parse_options(int argc, char **argv, bool *optimise, char **program) {
         return 0;
 }
 
+char *compile_program(char *program_str) {
+        struct program p = string_to_program(program_str);
+        free(program_str);
+        LLVMModuleRef module = generate(&p);
+        char *module_str = LLVMPrintModuleToString(module);
+        dispose_module(module);
+        free(p.cmds);
+        return module_str;
+}
+
 int main(int argc, char **argv) {
         bool optimise = false;
         char *program_str = NULL;
         if (parse_options(argc, argv, &optimise, &program_str) != 0) {
                 return 1;
         }
-        struct program p = string_to_program(program_str);
-        free(program_str);
-        LLVMModuleRef module = generate(&p);
-        char *module_str = LLVMPrintModuleToString(module);
+        char *module_str = compile_program(program_str);
         printf("%s", module_str);
         LLVMDisposeMessage(module_str);
-        dispose_module(module);
-        free(p.cmds);
         return 0;
 }
