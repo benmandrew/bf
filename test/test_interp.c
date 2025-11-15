@@ -15,8 +15,8 @@ START_TEST(test_inc_and_dp) {
         int result = interp(&ctx, NOFD, NOFD, false);
         ck_assert_int_eq(ctx.data[0], 2);
         ck_assert_int_eq(result, 0);
-        while (!interp(&ctx, NOFD, NOFD, false))
-                ;
+        while (!interp(&ctx, NOFD, NOFD, false)) {
+        };
         char *str = context_to_string(&ctx);
         ck_assert_str_eq(str, "---\n"
                               "    ++>+++><\n"
@@ -32,8 +32,8 @@ START_TEST(test_loop) {
         // Multiply 3 by 5
         struct program p = string_to_program("+++[>+++++<-]>");
         struct context_t ctx = init_context(p);
-        while (!interp(&ctx, NOFD, NOFD, false))
-                ;
+        while (!interp(&ctx, NOFD, NOFD, false)) {
+        };
         char *str = context_to_string(&ctx);
         ck_assert_str_eq(str, "---\n"
                               "    +++[>+++++<-]>\n"
@@ -48,8 +48,8 @@ END_TEST
 START_TEST(test_nested_loop) {
         struct program p = string_to_program("++[>++[>++<-]<-]");
         struct context_t ctx = init_context(p);
-        while (!interp(&ctx, NOFD, NOFD, false))
-                ;
+        while (!interp(&ctx, NOFD, NOFD, false)) {
+        };
         char *str = context_to_string(&ctx);
         ck_assert_str_eq(str, "---\n"
                               "    ++[>++[>++<-]<-]\n"

@@ -137,26 +137,28 @@ else()
     message(WARNING "clang-format not found, formatting targets will not be available")
 endif()
 
-find_program(CLANG_TIDY clang-tidy)
-if(CLANG_TIDY)
-    file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.c")
-    add_custom_target(lint
-        COMMAND ${CLANG_TIDY} ${LINT_SOURCE_FILES}
-            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
-            -- -I${CMAKE_SOURCE_DIR}/src ${LLVM_DEFINITIONS_LIST}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Running clang-tidy on source files"
-    )
-    add_custom_target(lint-fix
-        COMMAND ${CLANG_TIDY} ${LINT_SOURCE_FILES}
-            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
-            --fix
-            -- -I${CMAKE_SOURCE_DIR}/src ${LLVM_DEFINITIONS_LIST}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Running clang-tidy with auto-fix on source files"
-    )
+find_program(CPPLINT NAMES cpplint cpplint.py PATHS /usr/bin /usr/local/bin /opt/homebrew/bin)
+if(CPPLINT)
+    file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.[ch]" "test/*.[ch]")
+    if(LINT_SOURCE_FILES)
+        add_custom_target(lint
+            COMMAND ${CPPLINT} --linelength=80 --quiet ${LINT_SOURCE_FILES}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "Running cpplint on source files"
+        )
+    else()
+        message(STATUS "No source files found for cpplint")
+        add_custom_target(lint
+            COMMAND echo "No source files to lint"
+            COMMENT "Lint target (cpplint) disabled - no files found"
+        )
+    endif()
 else()
-    message(WARNING "clang-tidy not found, lint targets will not be available")
+    message(WARNING "cpplint not found, lint target will not be available")
+    add_custom_target(lint
+        COMMAND echo "Lint not available - cpplint not found"
+        COMMENT "Lint target disabled"
+    )
 endif()
 
 add_custom_target(clean-all

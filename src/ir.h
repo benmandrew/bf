@@ -4,14 +4,14 @@
 #include <stddef.h>
 
 enum cmd_type {
-        CMD_SIMPLE_INC,    // '+'
-        CMD_SIMPLE_DEC,    // '-'
-        CMD_SIMPLE_RIGHT,  // '>'
-        CMD_SIMPLE_LEFT,   // '<'
-        CMD_SIMPLE_OUTPUT, // '.'
-        CMD_SIMPLE_INPUT,  // ','
-        CMD_JUMP_FORWARD,  // '['
-        CMD_JUMP_BACK,     // ']'
+        CMD_SIMPLE_INC,     // '+'
+        CMD_SIMPLE_DEC,     // '-'
+        CMD_SIMPLE_RIGHT,   // '>'
+        CMD_SIMPLE_LEFT,    // '<'
+        CMD_SIMPLE_OUTPUT,  // '.'
+        CMD_SIMPLE_INPUT,   // ','
+        CMD_JUMP_FORWARD,   // '['
+        CMD_JUMP_BACK,      // ']'
 };
 
 struct cmd {

@@ -6,8 +6,7 @@
 #include <string.h>
 
 struct context_t init_context(struct program p) {
-        struct context_t c =
-            (struct context_t){.pc = 0, .p = p, .dp = 0, .max_dp = 0};
+        struct context_t c = {.pc = 0, .p = p, .dp = 0, .max_dp = 0};
         memset(c.data, 0, DATA_SIZE);
         return c;
 }
@@ -43,15 +42,16 @@ size_t abstract_to_concrete_pc(size_t pc, struct program *p) {
 char *context_to_string(struct context_t *ctx) {
         size_t program_length = program_str_length(&ctx->p);
         size_t concrete_pc = abstract_to_concrete_pc(ctx->pc, &ctx->p);
-        size_t buffer_size = 8                       // "---\n    "
-                             + program_length        // program string
-                             + 5                     // "\nPC: "
-                             + concrete_pc           // spaces for PC
-                             + 6                     // "^\n    "
-                             + (ctx->max_dp + 1) * 4 // data values (max "255 ")
-                             + 5                     // "\nDP: "
-                             + ctx->dp * 4 // spaces for DP (max 4 per position)
-                             + 3;          // "^\n\0"
+        size_t buffer_size =
+            8                        // "---\n    "
+            + program_length         // program string
+            + 5                      // "\nPC: "
+            + concrete_pc            // spaces for PC
+            + 6                      // "^\n    "
+            + (ctx->max_dp + 1) * 4  // data values (max "255 ")
+            + 5                      // "\nDP: "
+            + ctx->dp * 4            // spaces for DP (max 4 per position)
+            + 3;                     // "^\n\0"
         char *out = malloc(buffer_size);
         if (!out) {
                 fprintf(stderr, "Memory allocation failed\n");
@@ -66,7 +66,7 @@ char *context_to_string(struct context_t *ctx) {
         out += program_length;
         memcpy(out, "\nPC: ", 5);
         out += 5;
-        size_t i;
+        size_t i = 0;
         for (i = 0; i < concrete_pc; i++) {
                 out[i] = ' ';
         }
@@ -75,7 +75,8 @@ char *context_to_string(struct context_t *ctx) {
         out += 6;
         char intermediate[5];
         for (i = 0; i <= ctx->max_dp; i++) {
-                sprintf(intermediate, "%u ", ctx->data[i]);
+                snprintf(intermediate, sizeof(intermediate), "%u ",
+                         ctx->data[i]);
                 size_t len = strlen(intermediate);
                 memcpy(out, intermediate, len);
                 out += len;
@@ -114,7 +115,7 @@ void interp_dot(struct context_t *ctx, int out_fd, bool byte_output) {
 }
 
 void interp_comma(struct context_t *ctx, int in_fd) {
-        char c_in;
+        char c_in = 0;
         ssize_t ret = read(in_fd, &c_in, 1);
         if (ret <= 0) {
                 fprintf(stderr, "Read error %zd\n", ret);

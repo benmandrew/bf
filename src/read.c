@@ -1,6 +1,9 @@
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "read.h"
 
 #define IS_BF_CHAR(c)                                                          \
         ((c) == '+' || (c) == '-' || (c) == '>' || (c) == '<' || (c) == '.' || \
@@ -8,7 +11,7 @@
 
 // Clean whitespace and other extraneous characters from a BF program
 char *clean(char *s) {
-        long len = 0, i = 0;
+        int64_t len = 0, i = 0;
         while (s[i] != '\0') {
                 if (IS_BF_CHAR(s[i])) {
                         len++;
@@ -16,7 +19,7 @@ char *clean(char *s) {
                 i++;
         }
         char *program = malloc(len + 1);
-        long j = 0;
+        int64_t j = 0;
         i = 0;
         while (s[i] != '\0') {
                 if (IS_BF_CHAR(s[i])) {
@@ -37,7 +40,7 @@ char *read_file(char *fname) {
                 exit(1);
         }
         fseek(f, 0, SEEK_END);
-        long len = ftell(f);
+        int64_t len = ftell(f);
         if (len < 0) {
                 fprintf(stderr, "Getting file size for '%s' failed\n", fname);
                 fclose(f);

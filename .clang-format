@@ -1,3 +1,5 @@
 ---
+Language: C
 BasedOnStyle: LLVM
 IndentWidth: 8
+SpacesBeforeTrailingComments: 2

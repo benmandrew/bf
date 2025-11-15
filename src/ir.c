@@ -1,9 +1,9 @@
+#include "ir.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "ir.h"
 
 #define JUMP_STACK_MAX_SIZE (128)
 

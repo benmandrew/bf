@@ -69,8 +69,8 @@ int main(int argc, char **argv) {
         struct program p = string_to_program(program_str);
         free(program_str);
         struct context_t ctx = init_context(p);
-        while (!interp(&ctx, STDOUT_FILENO, STDIN_FILENO, byte_output))
-                ;
+        while (!interp(&ctx, STDOUT_FILENO, STDIN_FILENO, byte_output)) {
+        };
         free(p.cmds);
         return 0;
 }

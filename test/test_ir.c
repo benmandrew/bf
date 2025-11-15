@@ -1,3 +1,5 @@
+#include "test_ir.h"
+
 #include <check.h>
 #include <stdio.h>
 #include <stdlib.h>

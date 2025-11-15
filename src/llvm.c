@@ -1,9 +1,10 @@
+#include "llvm.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "common.h"
-#include "llvm.h"
 
 struct llvm_function {
         LLVMValueRef func;

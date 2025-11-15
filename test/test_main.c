@@ -1,7 +1,7 @@
+#include <stdlib.h>
+
 #include "test_interp.h"
 #include "test_ir.h"
-
-#include <stdlib.h>
 
 int main(void) {
         Suite *s = suite_create("UnitTests");

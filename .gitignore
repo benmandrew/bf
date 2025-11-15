@@ -54,6 +54,7 @@ dkms.conf
 build/
 
 .vscode/
+.cache
 
 CMakeLists.txt.user
 CMakeCache.txt
