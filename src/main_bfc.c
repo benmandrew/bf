@@ -39,9 +39,10 @@ int parse_options(int argc, char **argv, bool *optimise, char **program) {
                 }
         }
         if (optind >= argc) {
-                fprintf(stderr, "Error: Input file must be provided\n\n");
-                print_usage(argv[0]);
-                return 1;
+                *program = malloc(8192);
+                read(STDIN_FILENO, *program, 8192);
+                *program = clean_whitespace(*program);
+                return 0;
         }
         if (optind + 1 < argc) {
                 fprintf(stderr, "Error: Too many arguments\n\n");

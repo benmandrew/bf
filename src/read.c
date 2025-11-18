@@ -10,7 +10,7 @@
          (c) == ',' || (c) == '[' || (c) == ']')
 
 // Clean whitespace and other extraneous characters from a BF program
-char *clean(char *s) {
+char *clean_whitespace(char *s) {
         int64_t len = 0, i = 0;
         while (s[i] != '\0') {
                 if (IS_BF_CHAR(s[i])) {
@@ -54,7 +54,7 @@ char *read_file(char *fname) {
         }
         fclose(f);
         s[len] = '\0';
-        char *program = clean(s);
+        char *program = clean_whitespace(s);
         free(s);
         return program;
 }
