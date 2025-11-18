@@ -10,7 +10,7 @@
          (c) == ',' || (c) == '[' || (c) == ']')
 
 // Clean whitespace and other extraneous characters from a BF program
-char *clean_whitespace(char *s) {
+void clean_whitespace(char *s) {
         int64_t len = 0, i = 0;
         while (s[i] != '\0') {
                 if (IS_BF_CHAR(s[i])) {
@@ -18,19 +18,17 @@ char *clean_whitespace(char *s) {
                 }
                 i++;
         }
-        char *program = malloc(len + 1);
         int64_t j = 0;
         i = 0;
         while (s[i] != '\0') {
                 if (IS_BF_CHAR(s[i])) {
-                        program[j] = s[i];
+                        s[j] = s[i];
                         j++;
                 }
                 i++;
         }
-        program[j] = '\0';
+        s[j] = '\0';
         assert(j == len);
-        return program;
 }
 
 char *read_file(char *fname) {
@@ -47,14 +45,13 @@ char *read_file(char *fname) {
                 exit(1);
         }
         fseek(f, 0, SEEK_SET);
-        char *s = malloc(len + 1);
-        if (fread(s, len, 1, f) == 0) {
+        char *program = malloc(len + 1);
+        if (fread(program, len, 1, f) == 0) {
                 fprintf(stderr, "Reading '%s' failed\n", fname);
                 exit(1);
         }
         fclose(f);
-        s[len] = '\0';
-        char *program = clean_whitespace(s);
-        free(s);
+        program[len] = '\0';
+        clean_whitespace(program);
         return program;
 }

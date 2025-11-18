@@ -41,7 +41,7 @@ int parse_options(int argc, char **argv, bool *optimise, char **program) {
         if (optind >= argc) {
                 *program = malloc(8192);
                 read(STDIN_FILENO, *program, 8192);
-                *program = clean_whitespace(*program);
+                clean_whitespace(*program);
                 return 0;
         }
         if (optind + 1 < argc) {
