@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BF | Brainf*ck to LLVM IR</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div id="topbar">
+    <div class="left">Brainf*ck → LLVM IR</div>
+    <div class="right">
+      <label for="serverUrl">Compiler URL</label>
+      <input id="serverUrl" type="text" value="http://localhost:8080/compile"/>
+      <button id="btnCompile">Compile</button>
+      <button id="btnDownload">Download IR</button>
+    </div>
+  </div>
+
+  <main id="split">
+    <section class="pane" id="leftPane">
+      <header>Brainf*ck</header>
+      <textarea id="bfEditor" spellcheck="false" aria-label="Brainf*ck editor" placeholder="Type brainf*ck code here..."></textarea>
+      <div class="footer">Tip: press <strong>Ctrl/Cmd+Enter</strong> to compile</div>
+    </section>
+
+    <section class="pane" id="rightPane">
+      <header>LLVM IR</header>
+      <pre id="irView" aria-live="polite"></pre>
+      <div class="footer" id="status">Ready</div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
