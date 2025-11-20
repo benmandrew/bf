@@ -37,15 +37,11 @@ endif()
 
 if(NOT LLVM_FOUND)
     message(FATAL_ERROR "LLVM is required but not found. Install LLVM and try again.\n"
-                        "\n"
                         "Installation instructions:\n"
-                        "\n"
                         "macOS (Homebrew):\n"
                         "  brew install llvm\n"
-                        "\n"
                         "Ubuntu/Debian:\n"
-                        "  sudo apt-get install llvm-dev\n"
-                        "\n")
+                        "  sudo apt-get install llvm-dev\n")
 endif()
 
 set(CMAKE_C_STANDARD 17)
@@ -110,7 +106,11 @@ set_target_properties(bfc bf_lib
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-add_subdirectory(test)
+option(BUILD_TESTING "Build tests" ON)
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(test)
+endif()
 
 add_custom_target(debug
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
