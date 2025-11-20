@@ -12,12 +12,12 @@ A compiler frontend for the [Brainf*ck language](https://en.wikipedia.org/wiki/B
 
 #### Ubuntu/Debian
 ```bash
-$ sudo apt-get install cmake llvm-dev libcheck-dev expect clang-format
+$ sudo apt-get install cmake llvm-dev check expect clang-format cpplint
 ```
 
 #### macOS (Homebrew)
 ```bash
-$ brew install cmake llvm check expect clang-format
+$ brew install cmake llvm check expect clang-format cpplint
 ```
 
 ## Building

@@ -100,7 +100,7 @@ else()
     )
 endif()
 
-add_custom_target(test
+add_custom_target(tests
     DEPENDS unittest expecttest filecheck
     COMMENT "Running all test suites"
 )

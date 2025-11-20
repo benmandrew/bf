@@ -1,0 +1,25 @@
+FROM golang:latest@sha256:f60eaa87c79e604967c84d18fd3b151b3ee3f033bcdade4f3494e38411e60963 AS builder
+
+WORKDIR /build
+
+COPY . /build
+
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+	   build-essential cmake ninja-build llvm-dev \
+	   ca-certificates zlib1g-dev libzstd-dev \
+	&& rm -rf /var/lib/apt/lists/*
+
+RUN cmake -S . -B build -G Ninja -DBUILD_TESTING=OFF \
+	&& cmake --build build --target bfc -j$(nproc)
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o build/bfc-http src/bfc-http.go
+
+FROM golang:latest@sha256:f60eaa87c79e604967c84d18fd3b151b3ee3f033bcdade4f3494e38411e60963
+WORKDIR /app
+
+COPY --from=builder /build/build/bfc-http /app/bfc-http
+COPY --from=builder /build/build/bfc /app/bfc
+
+EXPOSE 8000
+ENTRYPOINT [ "/app/bfc-http", "/app/bfc" ]

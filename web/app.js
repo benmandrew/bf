@@ -3,7 +3,6 @@
   const irView = document.getElementById('irView');
   const btnCompile = document.getElementById('btnCompile');
   const btnDownload = document.getElementById('btnDownload');
-  const serverUrlInput = document.getElementById('serverUrl');
   const statusEl = document.getElementById('status');
 
   let debounceTimer = null;
@@ -12,7 +11,7 @@
   function setStatus(msg){ statusEl.textContent = msg; }
 
   async function compile(){
-    const url = serverUrlInput.value.trim() || '/compile';
+    const url = 'http://localhost:8000/compile';
     const code = bfEditor.value;
     if (!code){ irView.textContent = ''; setStatus('No input'); return; }
     setStatus('Compiling...');
