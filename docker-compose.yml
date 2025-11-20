@@ -1,0 +1,15 @@
+services:
+  bfc:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.bfc
+    ports:
+      - '8000:8000'
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    depends_on:
+      - bfc
+    ports:
+      - '8080:80'
