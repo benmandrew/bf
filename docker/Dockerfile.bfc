@@ -2,7 +2,8 @@ FROM golang:latest@sha256:f60eaa87c79e604967c84d18fd3b151b3ee3f033bcdade4f3494e3
 
 WORKDIR /build
 
-COPY . /build
+COPY CMakeLists.txt /build
+COPY ./src /build/src
 
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
@@ -10,7 +11,7 @@ RUN apt-get update \
 	   ca-certificates zlib1g-dev libzstd-dev \
 	&& rm -rf /var/lib/apt/lists/*
 
-RUN cmake -S . -B build -G Ninja -DBUILD_TESTING=OFF \
+RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
 	&& cmake --build build --target bfc -j$(nproc)
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o build/bfc-http src/bfc-http.go
