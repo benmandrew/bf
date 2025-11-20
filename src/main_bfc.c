@@ -40,7 +40,12 @@ int parse_options(int argc, char **argv, bool *optimise, char **program) {
         }
         if (optind >= argc) {
                 *program = malloc(8192);
-                read(STDIN_FILENO, *program, 8192);
+                ssize_t result = read(STDIN_FILENO, *program, 8192);
+                if (result == -1) {
+                        fprintf(stderr, "Error reading from stdin\n");
+                        return 1;
+                }
+                (*program)[result] = '\0';
                 clean_whitespace(*program);
                 return 0;
         }
