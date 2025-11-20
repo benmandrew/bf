@@ -44,6 +44,6 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/compile", runHandler)
-	log.Println("Listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Println("Listening on :8000")
+	log.Fatal(http.ListenAndServe("0.0.0.0:8000", nil))
 }
