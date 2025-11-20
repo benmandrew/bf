@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Brainfuck to LLVM IR</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="prism.css">
 </head>
 
 <body>
@@ -25,11 +26,12 @@
 
     <section class="pane" id="rightPane">
       <header>LLVM IR</header>
-      <pre id="irView" aria-live="polite"></pre>
+      <pre class="language-llvm" id="irView"></pre>
       <div class="footer" id="status">Ready</div>
     </section>
   </main>
 
   <script src="app.js"></script>
+  <script src="prism.js"></script>
 </body>
 </html>

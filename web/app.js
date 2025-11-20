@@ -12,6 +12,7 @@
 
   async function compile(){
     const url = 'http://localhost:8000/compile';
+    // Prism.highlightElement(bfEditor);
     const code = bfEditor.value;
     if (!code){ irView.textContent = ''; setStatus('No input'); return; }
     setStatus('Compiling...');
@@ -33,6 +34,7 @@
       irView.textContent = 'Network error: ' + err.message;
       setStatus('Network error');
     }
+    Prism.highlightElement(irView);
   }
 
   function scheduleCompile(){
