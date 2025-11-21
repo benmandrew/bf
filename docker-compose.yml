@@ -1,14 +1,16 @@
 services:
   bfc:
+    image: benmandrew/bf:bfc
     build:
       context: .
       dockerfile: docker/Dockerfile.bfc
     ports:
       - '8000:8000'
   nginx:
+    image: benmandrew/bf:nginx
     build:
       context: .
-      dockerfile: docker/Dockerfile.web
+      dockerfile: docker/Dockerfile.nginx
     depends_on:
       - bfc
     ports:
