@@ -1,21 +1,22 @@
-# Brainf*ck LLVM Compiler Frontend
+# Brainf*ck to LLVM IR Compiler Frontend
 
 A compiler frontend for the [Brainf*ck language](https://en.wikipedia.org/wiki/Brainfuck) that outputs code in LLVM Intermediate Representation (IR), which can then be compiled to any desired target architecture with `clang`.
 
-## Dependencies
+You can interact with it in the web interface, accessed at [`localhost:8080`](localhost:8080) after running
+```bash
+$ docker compose up
+```
 
-- CMake
-- LLVM development libraries
-- Check framework (for unit tests)
-- expect (for integration tests)
-- clang-format (optional, for code formatting)
+![alt](doc/screenshot.png)
+
+## Dependencies
 
 #### Ubuntu/Debian
 ```bash
 $ sudo apt-get install cmake llvm-dev check expect clang-format cpplint
 ```
 
-#### macOS (Homebrew)
+#### MacOS (Homebrew)
 ```bash
 $ brew install cmake llvm check expect clang-format cpplint
 ```
@@ -23,14 +24,9 @@ $ brew install cmake llvm check expect clang-format cpplint
 ## Building
 
 ```bash
-# Create build directory
 $ mkdir build
 $ cd build
-# Configure (Release mode)
 $ cmake ..
-# Or configure with debug symbols
-$ cmake -DCMAKE_BUILD_TYPE=Debug ..
-# Build
 $ cmake --build .
 ```
 
@@ -60,7 +56,7 @@ Hello, World!
 
 ### Tests
 ```bash
-$ cmake --build build --target test
+$ cmake --build build --target tests
 ```
 
 ### Code Formatting
@@ -73,6 +69,6 @@ $ cmake --build build --target fmt
 
 Compiling to the LLVM IR is a niche topic, and it is hard to find resources for learning. Here are a few useful ones I found:
 
-- https://mapping-high-level-constructs-to-llvm-ir.readthedocs.io/en/latest/
-- https://mukulrathi.com/create-your-own-programming-language/llvm-ir-cpp-api-tutorial/
-- https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/
+- *Mapping High Level Constructs to LLVM IR* ([link](https://mapping-high-level-constructs-to-llvm-ir.readthedocs.io/en/latest/))
+- *A Complete Guide to LLVM for Programming Language Creators* ([link](https://mukulrathi.com/create-your-own-programming-language/llvm-ir-cpp-api-tutorial/))
+- *My First Language Frontend with LLVM Tutorial* ([link](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/))
