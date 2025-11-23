@@ -11,15 +11,7 @@
 
 // Clean whitespace and other extraneous characters from a BF program
 void clean_whitespace(char *s) {
-        int64_t len = 0, i = 0;
-        while (s[i] != '\0') {
-                if (IS_BF_CHAR(s[i])) {
-                        len++;
-                }
-                i++;
-        }
-        int64_t j = 0;
-        i = 0;
+        int64_t j = 0, i = 0;
         while (s[i] != '\0') {
                 if (IS_BF_CHAR(s[i])) {
                         s[j] = s[i];
@@ -28,7 +20,6 @@ void clean_whitespace(char *s) {
                 i++;
         }
         s[j] = '\0';
-        assert(j == len);
 }
 
 char *read_file(char *fname) {
