@@ -2,7 +2,7 @@
 
 A compiler frontend for the [Brainf*ck language](https://en.wikipedia.org/wiki/Brainfuck) that outputs code in LLVM Intermediate Representation (IR), which can then be compiled to any desired target architecture with `clang`.
 
-You can interact with it in the web interface, accessed at [`localhost:8080`](localhost:8080) after running
+You can interact with it in the web interface, accessed at [`http://localhost:8080`](http://localhost:8080) after running
 ```bash
 $ docker compose up
 ```
