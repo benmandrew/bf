@@ -33,4 +33,7 @@ void free_program(struct program *p);
 char cmd_type_to_char(enum cmd_type t);
 char *program_to_string(struct program *program);
 
+char program_contains_output(struct program *p);
+char program_contains_input(struct program *p);
+
 #endif

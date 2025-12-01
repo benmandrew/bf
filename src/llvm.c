@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "common.h"
+#include "ir.h"
 
 struct llvm_function {
         LLVMValueRef func;
@@ -67,12 +68,17 @@ void create_getchar_declaration(struct llvm_context *ctx) {
             LLVMAddFunction(ctx->module, "getchar", ctx->getchar.type);
 }
 
-struct llvm_context create_module_preamble(const char *name) {
+struct llvm_context create_module_preamble(struct program *p,
+                                           const char *name) {
         struct llvm_context ctx;
         ctx.module = LLVMModuleCreateWithName(name);
         ctx.builder = LLVMCreateBuilder();
-        create_putchar_declaration(&ctx);
-        create_getchar_declaration(&ctx);
+        if (program_contains_output(p)) {
+                create_putchar_declaration(&ctx);
+        }
+        if (program_contains_input(p)) {
+                create_getchar_declaration(&ctx);
+        }
         ctx.dp = LLVMAddGlobal(ctx.module, LLVMInt32Type(), "dp");
         LLVMSetInitializer(ctx.dp, LLVMConstNull(LLVMInt32Type()));
         ctx.data = LLVMAddGlobal(
@@ -189,7 +195,7 @@ void right_bracket(struct llvm_context *ctx) {
 }
 
 LLVMModuleRef generate(struct program *p) {
-        struct llvm_context ctx = create_module_preamble("main");
+        struct llvm_context ctx = create_module_preamble(p, "main");
         create_main_function(&ctx);
         for (size_t i = 0; i < p->length; i++) {
                 struct cmd c = p->cmds[i];

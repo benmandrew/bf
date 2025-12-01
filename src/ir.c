@@ -197,3 +197,21 @@ char *program_to_string(struct program *program) {
         out[program_str_len] = '\0';
         return out;
 }
+
+char program_contains_output(struct program *p) {
+        for (size_t i = 0; i < p->length; i++) {
+                if (p->cmds[i].type == CMD_SIMPLE_OUTPUT) {
+                        return 1;
+                }
+        }
+        return 0;
+}
+
+char program_contains_input(struct program *p) {
+        for (size_t i = 0; i < p->length; i++) {
+                if (p->cmds[i].type == CMD_SIMPLE_INPUT) {
+                        return 1;
+                }
+        }
+        return 0;
+}
