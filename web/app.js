@@ -15,7 +15,7 @@
     if (!code){ irView.textContent = ''; setStatus('No input'); return; }
     setStatus('Compiling...');
     try{
-      const url = 'https://benmandrew.com/compile-bf-llvm?code=' + encodeURIComponent(code);
+      const url = 'http://localhost:8000/compile?code=' + encodeURIComponent(code);
       const res = await fetch(url, { method: 'GET' });
       const text = await res.text();
       if (!res.ok){
