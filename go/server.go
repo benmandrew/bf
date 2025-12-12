@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -12,6 +13,51 @@ import (
 var cache map[string][]byte
 var n_requests int64
 var n_cache_hits int64
+
+var allowed_chars = map[rune]bool{
+	'>': true,
+	'<': true,
+	'+': true,
+	'-': true,
+	'.': true,
+	',': true,
+	'[': true,
+	']': true,
+}
+
+type bfError struct {
+	message string
+}
+
+func (e *bfError) Error() string {
+	return fmt.Sprintf("%s", e.message)
+}
+
+func sanitiseInput(input string) (string, error) {
+	var filteredInput bytes.Buffer
+	if len(input) > 10000 {
+		return "", &bfError{message: "Input too long"}
+	}
+	loop_stack_depth := 0
+	for i, char := range input {
+		if !allowed_chars[char] {
+			return "", &bfError{
+				message: fmt.Sprintf("Invalid character %q at location %d", char, i+1),
+			}
+		}
+		filteredInput.WriteRune(char)
+		switch {
+		case char == '[':
+			loop_stack_depth++
+		case char == ']':
+			loop_stack_depth--
+		}
+	}
+	if loop_stack_depth != 0 {
+		return "", &bfError{message: "Mismatched loops"}
+	}
+	return filteredInput.String(), nil
+}
 
 func runHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -30,9 +76,14 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed reading input", http.StatusBadRequest)
 		return
 	}
+	str_input, err := sanitiseInput(string(input))
+	if err != nil {
+		http.Error(w, "Invalid input: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 	n_requests++
 	w.Header().Set("Content-Type", "text/plain")
-	if output, found := cache[string(input)]; found {
+	if output, found := cache[str_input]; found {
 		n_cache_hits++
 		log.Printf("Cache hit, total requests: %d, cache hits: %d", n_requests, n_cache_hits+1)
 		w.Write(output)
@@ -40,7 +91,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	programPath := os.Args[1]
 	cmd := exec.Command(programPath)
-	cmd.Stdin = bytes.NewReader(input)
+	cmd.Stdin = bytes.NewReader([]byte(str_input))
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
