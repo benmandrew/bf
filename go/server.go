@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -61,21 +60,17 @@ func sanitiseInput(input string) (string, error) {
 
 func runHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	if r.Method != http.MethodPost {
-		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET required", http.StatusMethodNotAllowed)
 		return
 	}
-	input, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed reading input", http.StatusBadRequest)
-		return
-	}
+	input := []byte(r.URL.Query().Get("code"))
 	str_input, err := sanitiseInput(string(input))
 	if err != nil {
 		http.Error(w, "Invalid input: "+err.Error(), http.StatusBadRequest)
@@ -110,7 +105,7 @@ func main() {
 	cache = make(map[string][]byte)
 	n_requests = 0
 	n_cache_hits = 0
-	http.HandleFunc("/compile", runHandler)
+	http.HandleFunc("/", runHandler)
 	log.Println("Listening on :8000")
 	log.Fatal(http.ListenAndServe("0.0.0.0:8000", nil))
 }

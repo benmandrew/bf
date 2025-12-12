@@ -11,17 +11,12 @@
   function setStatus(msg){ statusEl.textContent = msg; }
 
   async function compile(){
-    const url = 'http://localhost:8000/compile';
-    // Prism.highlightElement(bfEditor);
     const code = bfEditor.value;
     if (!code){ irView.textContent = ''; setStatus('No input'); return; }
     setStatus('Compiling...');
     try{
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: code
-      });
+      const url = 'https://benmandrew.com/compile-bf-llvm?code=' + encodeURIComponent(code);
+      const res = await fetch(url, { method: 'GET' });
       const text = await res.text();
       if (!res.ok){
         irView.textContent = text || `Compiler error: ${res.status}`;
