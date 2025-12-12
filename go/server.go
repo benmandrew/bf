@@ -101,11 +101,13 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	cache[string(input)] = stdout.Bytes()
 }
 
+var endpoint = "/"
+
 func main() {
 	cache = make(map[string][]byte)
 	n_requests = 0
 	n_cache_hits = 0
-	http.HandleFunc("/", runHandler)
-	log.Println("Listening on :8000")
+	http.HandleFunc(endpoint, runHandler)
+	log.Println("Listening on :8000 at endpoint", endpoint)
 	log.Fatal(http.ListenAndServe("0.0.0.0:8000", nil))
 }
