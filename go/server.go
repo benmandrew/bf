@@ -14,14 +14,16 @@ var n_requests int64
 var n_cache_hits int64
 
 var allowed_chars = map[rune]bool{
-	'>': true,
-	'<': true,
-	'+': true,
-	'-': true,
-	'.': true,
-	',': true,
-	'[': true,
-	']': true,
+	'>':  true,
+	'<':  true,
+	'+':  true,
+	'-':  true,
+	'.':  true,
+	',':  true,
+	'[':  true,
+	']':  true,
+	'\n': true,
+	' ':  true,
 }
 
 type bfError struct {
