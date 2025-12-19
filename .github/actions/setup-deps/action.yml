@@ -1,0 +1,43 @@
+name: Setup Dependencies
+description: Install all build and test dependencies
+
+runs:
+  using: composite
+  steps:
+    - name: Restore cached APT packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/apt-archives
+        key: ${{ runner.os }}-apt-all-${{ hashFiles('.github/workflows/ci.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-apt-all-
+
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        mkdir -p ~/.cache/apt-archives
+        # Restore cached packages if available
+        if [ -d ~/.cache/apt-archives ] && [ "$(ls -A ~/.cache/apt-archives)" ]; then
+          sudo cp ~/.cache/apt-archives/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+        fi
+        sudo apt-get update
+        sudo apt-get install -y --download-only clang-format cmake pipx expect check llvm-dev llvm ccache
+        # Cache the downloaded packages
+        cp /var/cache/apt/archives/*.deb ~/.cache/apt-archives/ 2>/dev/null || true
+        sudo apt-get install -y clang-format cmake pipx expect check llvm-dev llvm ccache
+
+    - name: Install cpplint via pipx
+      shell: bash
+      run: |
+        pipx install cpplint
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Setup LLVM tools
+      shell: bash
+      run: |
+        # Find LLVM tools directory and add to PATH
+        LLVM_DIR=$(find /usr/lib -name "llvm-*" -type d | head -1)
+        if [ -n "$LLVM_DIR" ]; then
+          echo "$LLVM_DIR/bin" >> $GITHUB_PATH
+        fi
+        echo "/usr/bin" >> $GITHUB_PATH
