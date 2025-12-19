@@ -27,9 +27,9 @@ jobs:
         run: |
           mkdir -p ~/.cache/apt-archives
           sudo apt-get update
-          sudo apt-get install -y --download-only clang-format
+          sudo apt-get install -y --download-only clang-format cmake
           cp /var/cache/apt/archives/*.deb ~/.cache/apt-archives/ 2>/dev/null || true
-          sudo apt-get install -y clang-format
+          sudo apt-get install -y clang-format cmake
       - name: Check code formatting
         run: |
           mkdir -p build
@@ -43,7 +43,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Install cpplint
         run: |
-          python3 -m pip install --user cpplint
+          sudo apt-get update
+          sudo apt-get install -y pipx
+          pipx install cpplint
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           # Verify installation
           which cpplint || python3 -m cpplint --version || true
