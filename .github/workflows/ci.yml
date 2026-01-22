@@ -56,7 +56,7 @@ jobs:
     name: Push Docker Images
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.server_url != 'https://github.com'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
