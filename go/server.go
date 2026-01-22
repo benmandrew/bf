@@ -103,13 +103,27 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	cache[string(input)] = stdout.Bytes()
 }
 
-var endpoint = "/"
+func metricsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	compilations := n_requests - n_cache_hits
+	fmt.Fprintf(w, "# HELP bfc_requests_total Total number of bfc execution requests\n")
+	fmt.Fprintf(w, "# TYPE bfc_requests_total counter\n")
+	fmt.Fprintf(w, "bfc_requests_total %d\n", n_requests)
+	fmt.Fprintf(w, "# HELP bfc_cache_hits_total Total number of bfc cache hits\n")
+	fmt.Fprintf(w, "# TYPE bfc_cache_hits_total counter\n")
+	fmt.Fprintf(w, "bfc_cache_hits_total %d\n", n_cache_hits)
+	fmt.Fprintf(w, "# HELP bfc_compilations_total Total number of bfc compilations (cache misses)\n")
+	fmt.Fprintf(w, "# TYPE bfc_compilations_total counter\n")
+	fmt.Fprintf(w, "bfc_compilations_total %d\n", compilations)
+}
 
 func main() {
 	cache = make(map[string][]byte)
 	n_requests = 0
 	n_cache_hits = 0
-	http.HandleFunc(endpoint, runHandler)
-	log.Println("Listening on :8000 at endpoint", endpoint)
+	http.HandleFunc("/", runHandler)
+	http.HandleFunc("/metrics", metricsHandler)
+	log.Println("Listening on :8000 at /")
+	log.Println("Prometheus metrics available at /metrics")
 	log.Fatal(http.ListenAndServe("0.0.0.0:8000", nil))
 }
