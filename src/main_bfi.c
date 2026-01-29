@@ -51,12 +51,13 @@ int parse_options(int argc, char **argv, bool *byte_output, char **program) {
                 return 1;
         }
         char *program_file = argv[optind];
-        *program = read_file(program_file);
-        if (!*program) {
-                fprintf(stderr, "Error: Could not read file '%s'\n",
-                        program_file);
+        struct ReadReturn *read_result = read_file(program_file);
+        if (read_result->type == ERROR) {
+                fprintf(stderr, "Error: %s\n",
+                        read_result->value.error.message);
                 return 1;
         }
+        *program = read_result->value.program_str;
         return 0;
 }
 

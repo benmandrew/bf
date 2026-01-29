@@ -73,6 +73,8 @@ You can fuzz test with AFL
 $ docker pull aflplusplus/aflplusplus:latest
 $ docker run -ti -v .:/src aflplusplus/aflplusplus
 # In the docker container
+$ cd /src
+$ rm -rf build  # If you have already run a build before
 $ CC=afl-clang-fast cmake -B build
 $ cmake --build build --target fuzz
 ```

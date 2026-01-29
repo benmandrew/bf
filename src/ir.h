@@ -36,4 +36,6 @@ char *program_to_string(struct program *program);
 char program_contains_output(struct program *p);
 char program_contains_input(struct program *p);
 
+char program_is_valid(char *s);
+
 #endif
