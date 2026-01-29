@@ -77,6 +77,8 @@ llvm_map_components_to_libnames(llvm_libs support core irreader)
 
 set(LLVM_AVAILABLE TRUE)
 
+
+# Use an OBJECT library for shared sources to avoid flag leakage
 set(LIB_SOURCES
     src/interp.c
     src/ir.c
@@ -84,22 +86,32 @@ set(LIB_SOURCES
     src/llvm.c
 )
 
-add_library(bf_lib STATIC ${LIB_SOURCES})
-target_include_directories(bf_lib PUBLIC src)
+add_library(bf_obj OBJECT ${LIB_SOURCES})
+target_include_directories(bf_obj PUBLIC src)
+target_compile_definitions(bf_obj PUBLIC LLVM_AVAILABLE)
+target_compile_options(bf_obj PRIVATE -fPIE)
 
+add_library(bf_lib STATIC $<TARGET_OBJECTS:bf_obj>)
+target_include_directories(bf_lib PUBLIC src)
 target_link_libraries(bf_lib ${llvm_libs})
 target_compile_definitions(bf_lib PUBLIC LLVM_AVAILABLE)
 
+
 add_executable(bfi src/main_bfi.c)
 target_link_libraries(bfi bf_lib)
+target_compile_options(bfi PRIVATE -fPIE)
+target_link_options(bfi PRIVATE -pie)
 set_target_properties(bfi bf_lib 
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
+
 add_executable(bfc src/main_bfc.c)
 target_link_libraries(bfc bf_lib)
+target_compile_options(bfc PRIVATE -fPIE)
+target_link_options(bfc PRIVATE -pie)
 set_target_properties(bfc bf_lib 
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -157,10 +169,12 @@ if(CPPLINT)
         file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.[ch]" "test/*.[ch]")
         if(LINT_SOURCE_FILES)
             add_custom_target(lint
+                COMMAND ${CMAKE_COMMAND} -E echo "--- Running cpplint ---"
                 COMMAND ${CPPLINT} --linelength=80 --quiet ${LINT_SOURCE_FILES}
-                COMMAND ${CLANG_ANALYZE} --analyze -Xanalyzer -analyzer-output=text src/*.c
+                COMMAND ${CMAKE_COMMAND} -E echo "--- Running clang static analyzer ---"
+                COMMAND ${CLANG_ANALYZE} --analyze -Xanalyzer -analyzer-output=text -I${LLVM_INCLUDE_DIRS} src/*.c
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                COMMENT "Running cpplint on source files"
+                COMMENT "Linting"
             )
         else()
             message(STATUS "No source files found for cpplint")
@@ -190,33 +204,26 @@ if(NOT AFL_CC)
     message(WARNING "AFL compiler not found, fuzz target will be skipped.")
 endif()
 
-find_program(VALGRIND NAMES valgrind)
-if(NOT VALGRIND)
-    message(WARNING "valgrind not found, valgrind step will be skipped in fuzz target.")
-endif()
-
-# Build bfc_fuzz with AFL and sanitizers if AFL is found
+# AFL fuzzing and sanitizer/valgrind checks
 if(AFL_CC)
-    set(CMAKE_C_COMPILER ${AFL_CC})
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined -g -O1 -fPIE")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address,undefined -pie")
+    add_library(bf_obj_fuzz OBJECT ${LIB_SOURCES})
+    target_include_directories(bf_obj_fuzz PUBLIC src)
+    target_compile_definitions(bf_obj_fuzz PUBLIC LLVM_AVAILABLE)
+    target_compile_options(bf_obj_fuzz PRIVATE -fsanitize=address,undefined -g -O1 -fPIE)
 
-    add_library(bf_lib_fuzz STATIC ${LIB_SOURCES})
+    add_library(bf_lib_fuzz STATIC $<TARGET_OBJECTS:bf_obj_fuzz>)
     target_include_directories(bf_lib_fuzz PUBLIC src)
     target_link_libraries(bf_lib_fuzz ${llvm_libs})
     target_compile_definitions(bf_lib_fuzz PUBLIC LLVM_AVAILABLE)
-    target_compile_options(bf_lib_fuzz PRIVATE -fPIE)
+    target_link_options(bf_lib_fuzz PRIVATE -fsanitize=address,undefined -pie)
 
     add_executable(bfc_fuzz src/main_bfc.c)
     target_link_libraries(bfc_fuzz bf_lib_fuzz)
     set_target_properties(bfc_fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-    target_compile_options(bfc_fuzz PRIVATE -fPIE)
-    # Ensure linking uses AFL compiler
+    target_compile_options(bfc_fuzz PRIVATE -fsanitize=address,undefined -g -O1 -fPIE)
+    target_link_options(bfc_fuzz PRIVATE -fsanitize=address,undefined -pie)
     set_target_properties(bfc_fuzz PROPERTIES
         LINKER_LANGUAGE C
-    )
-    # Use AFL_CC for linking as well
-    set_target_properties(bfc_fuzz PROPERTIES
         LINK_EXECUTABLE "${AFL_CC} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${CMAKE_EXE_LINKER_FLAGS}"
     )
 endif()
@@ -236,13 +243,18 @@ if(AFL_CC)
         COMMAND afl-fuzz -i test/fuzz -o fuzz_output ${CMAKE_BINARY_DIR}/bfc_fuzz
     )
 endif()
+
 add_custom_command(TARGET fuzz POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo "--- Running AddressSanitizer (ASan) ---"
     COMMAND ${CMAKE_COMMAND} -E env ASAN_OPTIONS=detect_leaks=1 ${CMAKE_BINARY_DIR}/bfc_fuzz < /dev/null || true
     COMMAND ${CMAKE_COMMAND} -E echo "--- Running UndefinedBehaviorSanitizer (UBSan) ---"
     COMMAND ${CMAKE_COMMAND} -E env UBSAN_OPTIONS=print_stacktrace=1 ${CMAKE_BINARY_DIR}/bfc_fuzz < /dev/null || true
 )
-if(VALGRIND)
+
+find_program(VALGRIND NAMES valgrind)
+if(NOT VALGRIND)
+    message(WARNING "valgrind not found, valgrind step will be skipped in fuzz target.")
+else()
     add_custom_command(TARGET fuzz POST_BUILD
         COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 ${CMAKE_BINARY_DIR}/bfc_fuzz < /dev/null || true
     )

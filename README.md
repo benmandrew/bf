@@ -65,6 +65,18 @@ $ cmake --build build --target tests
 $ cmake --build build --target fmt
 ```
 
+### Fuzzing
+
+You can fuzz test with AFL
+
+```bash
+$ docker pull aflplusplus/aflplusplus:latest
+$ docker run -ti -v .:/src aflplusplus/aflplusplus
+# In the docker container
+$ CC=afl-clang-fast cmake -B build
+$ cmake --build build --target fuzz
+```
+
 ## Useful Links for Learning the LLVM Intermediate Representation
 
 Compiling to the LLVM IR is a niche topic, and it is hard to find resources for learning. Here are a few useful ones I found:
