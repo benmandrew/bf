@@ -70,14 +70,16 @@ $ cmake --build build --target fmt
 You can fuzz test with AFL
 
 ```bash
-$ docker pull aflplusplus/aflplusplus:latest
-$ docker run -ti -v .:/src aflplusplus/aflplusplus
-# In the docker container
-$ cd /src
-$ rm -rf build  # If you have already run a build before
-$ CC=afl-clang-fast cmake -B build
-$ cmake --build build --target fuzz
+$ docker run -ti -v .:/src benmandrew/bf:fuzz
 ```
+
+If there are crashes, the offending inputs will be located in `build-fuzz/fuzz_output/default/crashes`.
+
+## FAQ
+
+> Why does ASan fail with `malloc: nano zone abandoned due to inability to reserve vm space.`?
+
+On MacOS, every ASan-built binary prints this error. This is not an issue with the program, and can be fixed by setting the environment variable `MallocNanoZone=0`. See https://github.com/google/sanitizers/issues/1666.
 
 ## Useful Links for Learning the LLVM Intermediate Representation
 

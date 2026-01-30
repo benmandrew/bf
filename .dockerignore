@@ -2,4 +2,5 @@
 !src
 !go
 !web
+!docker
 !CMakeLists.txt
