@@ -70,17 +70,24 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push BFC image
+      - name: Build and push bfc image
         uses: docker/build-push-action@v5
         with:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/bf:bfc
           file: docker/Dockerfile.bfc
           context: .
-      - name: Build and push Nginx image
+      - name: Build and push nginx image
         uses: docker/build-push-action@v5
         with:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/bf:nginx
           file: docker/Dockerfile.nginx
+          context: .
+      - name: Build and push fuzzing image
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/bf:fuzz
+          file: docker/Dockerfile.fuzz
           context: .
