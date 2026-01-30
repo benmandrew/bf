@@ -4,17 +4,17 @@ log_user 0
 
 source ./test/util.exp
 
-spawn ./build/bfi ./test/res/hi.b
+eval spawn $VALGRIND ./build/bfi ./test/res/hi.b
 expect_exact "Hi"
 
-spawn ./build/bfi ./test/res/hi_n.b
+eval spawn $VALGRIND ./build/bfi ./test/res/hi_n.b
 send "1\n"
 expect_exact "Hi"
 
-spawn ./build/bfi ./test/res/hi_n.b
+eval spawn $VALGRIND ./build/bfi ./test/res/hi_n.b
 send "2\n"
 expect_exact "HiHi"
 
-spawn ./build/bfi ./test/res/hi_n.b
+eval spawn $VALGRIND ./build/bfi ./test/res/hi_n.b
 send "9\n"
 expect_exact "HiHiHiHiHiHiHiHiHi"

@@ -11,3 +11,10 @@ proc expect_exact {text} {
 		}
 	}
 }
+
+catch {exec which valgrind} valgrind_path
+if {[string length $valgrind_path] > 0} {
+    set VALGRIND [list valgrind --leak-check=full --]
+} else {
+    set VALGRIND ""
+}
