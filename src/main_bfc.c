@@ -62,6 +62,7 @@ int parse_options(int argc, char **argv, bool *optimise, char **program) {
                 return 1;
         }
         *program = read_result->value.program_str;
+        free(read_result);
         return 0;
 }
 
