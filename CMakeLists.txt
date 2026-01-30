@@ -249,16 +249,9 @@ add_custom_target(fuzz
 
 if(AFL_CC)
     add_custom_command(TARGET fuzz POST_BUILD
-        COMMAND MallocNanoZone=0 afl-fuzz -i test/fuzz -o fuzz_output ${CMAKE_BINARY_DIR}/bfc_fuzz
+        COMMAND ${CMAKE_SOURCE_DIR}/docker/run_afl_parallel.sh ${CMAKE_BINARY_DIR}/bfc_fuzz
     )
 endif()
-
-add_custom_command(TARGET fuzz POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo "--- Running AddressSanitizer (ASan) ---"
-    COMMAND ${CMAKE_COMMAND} -E env ASAN_OPTIONS=detect_leaks=1 ${CMAKE_BINARY_DIR}/bfc_fuzz < /dev/null || true
-    COMMAND ${CMAKE_COMMAND} -E echo "--- Running UndefinedBehaviorSanitizer (UBSan) ---"
-    COMMAND ${CMAKE_COMMAND} -E env UBSAN_OPTIONS=print_stacktrace=1 ${CMAKE_BINARY_DIR}/bfc_fuzz < /dev/null || true
-)
 
 find_program(VALGRIND NAMES valgrind)
 if(NOT VALGRIND)
