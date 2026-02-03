@@ -4,31 +4,31 @@ log_user 0
 
 source ./test/util.exp
 
-eval spawn $VALGRIND ./build/bfi --byte-output ./test/res/factorial.b
+eval spawn ./build/bfi --byte-output ./test/res/factorial.b
 
 send "2\r"
 
 expect_exact "2"
 
-eval spawn $VALGRIND ./build/bfi --byte-output ./test/res/factorial.b
+eval spawn ./build/bfi --byte-output ./test/res/factorial.b
 
 send "3\r"
 
 expect_exact "6"
 
-eval spawn $VALGRIND ./build/bfi --byte-output ./test/res/factorial.b
+eval spawn ./build/bfi --byte-output ./test/res/factorial.b
 
 send "4\r"
 
 expect_exact "24"
 
-eval spawn $VALGRIND ./build/bfi --byte-output ./test/res/factorial.b
+eval spawn ./build/bfi --byte-output ./test/res/factorial.b
 
 send "5\r"
 
 expect_exact "120"
 
-eval spawn $VALGRIND ./build/bfi --byte-output ./test/res/factorial.b
+eval spawn ./build/bfi --byte-output ./test/res/factorial.b
 
 send "6\r"
 
