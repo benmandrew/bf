@@ -13,8 +13,8 @@ proc expect_exact {text} {
 }
 
 catch {exec which valgrind} valgrind_path
-if {[string length $valgrind_path] > 0} {
-    set VALGRIND [list valgrind --leak-check=full --]
+if {[string length $valgrind_path] > 0 && [string first "not found" $valgrind_path] == -1 && [file executable $valgrind_path]} {
+	set VALGRIND [list valgrind --leak-check=full --]
 } else {
-    set VALGRIND ""
+	set VALGRIND ""
 }
