@@ -20,6 +20,6 @@ for i in $(seq 2 "$CORES"); do
     afl-fuzz -i "$INPUT_DIR" -o "$SYNC_DIR" -S "$fuzzer" "$TARGET" @@ >/dev/null 2>&1 &
 done
 
-watch -n 0.5 -- afl-whatsup -s "$SYNC_DIR"
+watch -- afl-whatsup -s "$SYNC_DIR"
 
 wait

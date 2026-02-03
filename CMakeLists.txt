@@ -95,8 +95,6 @@ target_include_directories(bf_lib PUBLIC src)
 target_link_libraries(bf_lib ${llvm_libs})
 target_compile_definitions(bf_lib PUBLIC LLVM_AVAILABLE)
 
-
-
 # bfi executable
 add_executable(bfi src/main_bfi.c)
 target_link_libraries(bfi bf_lib)
@@ -226,7 +224,7 @@ if(AFL_CC)
     target_compile_definitions(bf_lib_fuzz PUBLIC LLVM_AVAILABLE)
     target_link_options(bf_lib_fuzz PRIVATE -fsanitize=address,undefined -pie)
 
-    add_executable(bfc_fuzz src/main_bfc.c)
+    add_executable(bfc_fuzz src/main_fuzz.c)
     target_link_libraries(bfc_fuzz bf_lib_fuzz)
     set_target_properties(bfc_fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
     target_compile_options(bfc_fuzz PRIVATE -fsanitize=address,undefined -g -O1 -fPIE)
