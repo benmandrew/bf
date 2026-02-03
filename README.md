@@ -65,6 +65,22 @@ $ cmake --build build --target tests
 $ cmake --build build --target fmt
 ```
 
+### Fuzzing
+
+You can fuzz test with AFL
+
+```bash
+$ docker run -ti -v .:/src benmandrew/bf:fuzz
+```
+
+If there are crashes, the offending inputs will be located in `build-fuzz/fuzz_output/default/crashes`.
+
+## FAQ
+
+> Why does ASan fail with `malloc: nano zone abandoned due to inability to reserve vm space.`?
+
+On MacOS, every ASan-built binary prints this error. This is not an issue with the program, and can be fixed by setting the environment variable `MallocNanoZone=0`. See https://github.com/google/sanitizers/issues/1666.
+
 ## Useful Links for Learning the LLVM Intermediate Representation
 
 Compiling to the LLVM IR is a niche topic, and it is hard to find resources for learning. Here are a few useful ones I found:

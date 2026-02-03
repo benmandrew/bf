@@ -49,7 +49,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)  # For gnu17
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Debug)
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
@@ -77,6 +77,7 @@ llvm_map_components_to_libnames(llvm_libs support core irreader)
 
 set(LLVM_AVAILABLE TRUE)
 
+# Use an OBJECT library for shared sources to avoid flag leakage
 set(LIB_SOURCES
     src/interp.c
     src/ir.c
@@ -84,22 +85,40 @@ set(LIB_SOURCES
     src/llvm.c
 )
 
-add_library(bf_lib STATIC ${LIB_SOURCES})
-target_include_directories(bf_lib PUBLIC src)
+add_library(bf_obj OBJECT ${LIB_SOURCES})
+target_include_directories(bf_obj PUBLIC src)
+target_compile_definitions(bf_obj PUBLIC LLVM_AVAILABLE)
+target_compile_options(bf_obj PRIVATE -fPIE)
 
+add_library(bf_lib STATIC $<TARGET_OBJECTS:bf_obj>)
+target_include_directories(bf_lib PUBLIC src)
 target_link_libraries(bf_lib ${llvm_libs})
 target_compile_definitions(bf_lib PUBLIC LLVM_AVAILABLE)
 
+# bfi executable
 add_executable(bfi src/main_bfi.c)
 target_link_libraries(bfi bf_lib)
+target_compile_options(bfi PRIVATE -fPIE
+    $<$<CONFIG:Debug>:-fsanitize=address,undefined -g -O1>
+)
+target_link_options(bfi PRIVATE -pie
+    $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+)
 set_target_properties(bfi bf_lib 
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
+# bfc executable
 add_executable(bfc src/main_bfc.c)
 target_link_libraries(bfc bf_lib)
+target_compile_options(bfc PRIVATE -fPIE
+    $<$<CONFIG:Debug>:-fsanitize=address,undefined -g -O1>
+)
+target_link_options(bfc PRIVATE -pie
+    $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+)
 set_target_properties(bfc bf_lib 
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -137,20 +156,45 @@ else()
     message(WARNING "clang-format not found, formatting targets will not be available")
 endif()
 
+# Lint and static/dynamic analysis tools
+file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.[ch]" "test/*.[ch]")
+
+# cpplint
 find_program(CPPLINT NAMES cpplint cpplint.py PATHS /usr/bin /usr/local/bin /opt/homebrew/bin)
+if(NOT CPPLINT)
+    message(WARNING "cpplint not found, cpplint step will be skipped in lint target.")
+endif()
+
+# clang-analyze
+find_program(CLANG_ANALYZE NAMES clang PATHS /usr/bin /usr/local/bin /opt/homebrew/bin)
+if(NOT CLANG_ANALYZE)
+    message(WARNING "clang not found, static analysis will be skipped in lint target.")
+endif()
+
 if(CPPLINT)
-    file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.[ch]" "test/*.[ch]")
-    if(LINT_SOURCE_FILES)
-        add_custom_target(lint
-            COMMAND ${CPPLINT} --linelength=80 --quiet ${LINT_SOURCE_FILES}
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMENT "Running cpplint on source files"
-        )
+    if (CLANG_ANALYZE)
+        file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.[ch]" "test/*.[ch]")
+        if(LINT_SOURCE_FILES)
+            add_custom_target(lint
+                COMMAND ${CMAKE_COMMAND} -E echo "--- Running cpplint ---"
+                COMMAND ${CPPLINT} --linelength=80 --quiet ${LINT_SOURCE_FILES}
+                COMMAND ${CMAKE_COMMAND} -E echo "--- Running clang static analyzer ---"
+                COMMAND ${CLANG_ANALYZE} --analyze -Xanalyzer -analyzer-output=text -I${LLVM_INCLUDE_DIRS} src/*.c
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                COMMENT "Linting"
+            )
+        else()
+            message(STATUS "No source files found for cpplint")
+            add_custom_target(lint
+                COMMAND echo "No source files to lint"
+                COMMENT "Lint target (cpplint) disabled - no files found"
+            )
+        endif()
     else()
-        message(STATUS "No source files found for cpplint")
+        message(WARNING "clang not found, lint target will not be available")
         add_custom_target(lint
-            COMMAND echo "No source files to lint"
-            COMMENT "Lint target (cpplint) disabled - no files found"
+            COMMAND echo "Lint not available - clang not found"
+            COMMENT "Lint target disabled"
         )
     endif()
 else()
@@ -158,6 +202,61 @@ else()
     add_custom_target(lint
         COMMAND echo "Lint not available - cpplint not found"
         COMMENT "Lint target disabled"
+    )
+endif()
+
+# AFL fuzzing and sanitizer/valgrind checks
+find_program(AFL_CC NAMES afl-clang-fast afl-gcc afl-clang PATHS /usr/bin /usr/local/bin /opt/homebrew/bin)
+if(NOT AFL_CC)
+    message(WARNING "AFL compiler not found, fuzz target will be skipped.")
+endif()
+
+# AFL fuzzing and sanitizer/valgrind checks
+if(AFL_CC)
+    add_library(bf_obj_fuzz OBJECT ${LIB_SOURCES})
+    target_include_directories(bf_obj_fuzz PUBLIC src)
+    target_compile_definitions(bf_obj_fuzz PUBLIC LLVM_AVAILABLE)
+    target_compile_options(bf_obj_fuzz PRIVATE -fsanitize=address,undefined -g -O1 -fPIE)
+
+    add_library(bf_lib_fuzz STATIC $<TARGET_OBJECTS:bf_obj_fuzz>)
+    target_include_directories(bf_lib_fuzz PUBLIC src)
+    target_link_libraries(bf_lib_fuzz ${llvm_libs})
+    target_compile_definitions(bf_lib_fuzz PUBLIC LLVM_AVAILABLE)
+    target_link_options(bf_lib_fuzz PRIVATE -fsanitize=address,undefined -pie)
+
+    add_executable(bfc_fuzz src/main_fuzz.c)
+    target_link_libraries(bfc_fuzz bf_lib_fuzz)
+    set_target_properties(bfc_fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+    target_compile_options(bfc_fuzz PRIVATE -fsanitize=address,undefined -g -O1 -fPIE)
+    target_link_options(bfc_fuzz PRIVATE -fsanitize=address,undefined -pie)
+    set_target_properties(bfc_fuzz PROPERTIES
+        LINKER_LANGUAGE C
+        LINK_EXECUTABLE "${AFL_CC} <OBJECTS> -o <TARGET> <LINK_LIBRARIES> ${CMAKE_EXE_LINKER_FLAGS}"
+    )
+endif()
+
+add_custom_target(fuzz
+    COMMENT "Fuzzing with AFL, ASan, UBSan, and valgrind"
+    COMMAND ${CMAKE_COMMAND} -E echo "--- Building with AFL and sanitizers ---"
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target bfc_fuzz
+    COMMAND ${CMAKE_COMMAND} -E echo "--- Copying only *.b files from test/fuzz to build directory ---"
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/test/fuzz
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/test/fuzz/*.b ${CMAKE_BINARY_DIR}/test/fuzz/
+    COMMAND ${CMAKE_COMMAND} -E echo "--- Running AFL fuzzer ---"
+)
+
+if(AFL_CC)
+    add_custom_command(TARGET fuzz POST_BUILD
+        COMMAND ${CMAKE_SOURCE_DIR}/docker/run_afl_parallel.sh ${CMAKE_BINARY_DIR}/bfc_fuzz
+    )
+endif()
+
+find_program(VALGRIND NAMES valgrind)
+if(NOT VALGRIND)
+    message(WARNING "valgrind not found, valgrind step will be skipped in fuzz target.")
+else()
+    add_custom_command(TARGET fuzz POST_BUILD
+        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 ${CMAKE_BINARY_DIR}/bfc_fuzz < /dev/null || true
     )
 endif()
 
