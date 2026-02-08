@@ -104,3 +104,6 @@ add_custom_target(tests
     DEPENDS unittest expecttest filecheck
     COMMENT "Running all test suites"
 )
+
+add_executable(main_fuzz main_fuzz.c)
+target_link_libraries(main_fuzz bf_lib)

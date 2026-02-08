@@ -101,7 +101,7 @@ target_link_libraries(bfi bf_lib)
 target_compile_options(bfi PRIVATE -fPIE
     $<$<CONFIG:Debug>:-fsanitize=address,undefined -g -O1>
 )
-target_link_options(bfi PRIVATE -pie
+target_link_options(bfi PRIVATE
     $<$<CONFIG:Debug>:-fsanitize=address,undefined>
 )
 set_target_properties(bfi bf_lib 
@@ -116,7 +116,7 @@ target_link_libraries(bfc bf_lib)
 target_compile_options(bfc PRIVATE -fPIE
     $<$<CONFIG:Debug>:-fsanitize=address,undefined -g -O1>
 )
-target_link_options(bfc PRIVATE -pie
+target_link_options(bfc PRIVATE
     $<$<CONFIG:Debug>:-fsanitize=address,undefined>
 )
 set_target_properties(bfc bf_lib 
@@ -224,7 +224,7 @@ if(AFL_CC)
     target_compile_definitions(bf_lib_fuzz PUBLIC LLVM_AVAILABLE)
     target_link_options(bf_lib_fuzz PRIVATE -fsanitize=address,undefined -pie)
 
-    add_executable(bfc_fuzz src/main_fuzz.c)
+    add_executable(bfc_fuzz test/main_fuzz.c)
     target_link_libraries(bfc_fuzz bf_lib_fuzz)
     set_target_properties(bfc_fuzz PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
     target_compile_options(bfc_fuzz PRIVATE -fsanitize=address,undefined -g -O1 -fPIE)
@@ -235,17 +235,17 @@ if(AFL_CC)
     )
 endif()
 
-add_custom_target(fuzz
-    COMMENT "Fuzzing with AFL, ASan, UBSan, and valgrind"
-    COMMAND ${CMAKE_COMMAND} -E echo "--- Building with AFL and sanitizers ---"
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target bfc_fuzz
-    COMMAND ${CMAKE_COMMAND} -E echo "--- Copying only *.b files from test/fuzz to build directory ---"
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/test/fuzz
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/test/fuzz/*.b ${CMAKE_BINARY_DIR}/test/fuzz/
-    COMMAND ${CMAKE_COMMAND} -E echo "--- Running AFL fuzzer ---"
-)
-
 if(AFL_CC)
+    add_custom_target(fuzz
+        COMMENT "Fuzzing with AFL, ASan, UBSan, and valgrind"
+        COMMAND ${CMAKE_COMMAND} -E echo "--- Building with AFL and sanitizers ---"
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target bfc_fuzz
+        COMMAND ${CMAKE_COMMAND} -E echo "--- Copying only *.b files from test/fuzz to build directory ---"
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/test/fuzz
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/test/fuzz/*.b ${CMAKE_BINARY_DIR}/test/fuzz/
+        COMMAND ${CMAKE_COMMAND} -E echo "--- Running AFL fuzzer ---"
+    )
+
     add_custom_command(TARGET fuzz POST_BUILD
         COMMAND ${CMAKE_SOURCE_DIR}/docker/run_afl_parallel.sh ${CMAKE_BINARY_DIR}/bfc_fuzz
     )
