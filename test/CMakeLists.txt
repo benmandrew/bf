@@ -107,3 +107,45 @@ add_custom_target(tests
 
 add_executable(main_fuzz main_fuzz.c)
 target_link_libraries(main_fuzz bf_lib)
+
+find_program(GOTO_CC goto-cc)
+if(GOTO_CC)
+    # Use LLVM include directories from the top-level CMakeLists.txt
+    if(DEFINED LLVM_INCLUDE_DIRS)
+        set(CBMC_LLVM_INCLUDE "-I${LLVM_INCLUDE_DIRS}")
+    else()
+        set(CBMC_LLVM_INCLUDE "")
+    endif()
+
+    # Define source files for CBMC compilation
+    set(CBMC_SOURCES interp ir read llvm)
+
+    # Build lists for the custom command
+    foreach(src ${CBMC_SOURCES})
+        list(APPEND CBMC_OBJECTS "${CMAKE_BINARY_DIR}/test/${src}_cbmc.o")
+        list(APPEND CBMC_COMMANDS "COMMAND" "${GOTO_CC}" "-c" "-I${CMAKE_SOURCE_DIR}/src" "${CBMC_LLVM_INCLUDE}" "${CMAKE_SOURCE_DIR}/src/${src}.c" "-o" "${CMAKE_BINARY_DIR}/test/${src}_cbmc.o")
+        list(APPEND CBMC_DEPENDS "${CMAKE_SOURCE_DIR}/src/${src}.c")
+    endforeach()
+
+    # Compile bf_lib object files with goto-cc, output to CMAKE_BINARY_DIR/test
+    add_custom_command(
+        OUTPUT ${CBMC_OBJECTS} ${CMAKE_BINARY_DIR}/test/bf_lib_cbmc.a
+        ${CBMC_COMMANDS}
+        COMMAND ar rcs ${CMAKE_BINARY_DIR}/test/bf_lib_cbmc.a ${CBMC_OBJECTS}
+        DEPENDS ${CBMC_DEPENDS}
+    )
+
+    # Compile main_cbmc.c with goto-cc and link with bf_lib_cbmc.a, use absolute path
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/test/main_cbmc
+        COMMAND ${GOTO_CC} -I${CMAKE_SOURCE_DIR}/src -I${CMAKE_SOURCE_DIR}/test ${CBMC_LLVM_INCLUDE} ${CMAKE_SOURCE_DIR}/test/main_cbmc.c ${CMAKE_BINARY_DIR}/test/bf_lib_cbmc.a -o ${CMAKE_BINARY_DIR}/test/main_cbmc
+        DEPENDS ${CMAKE_SOURCE_DIR}/test/main_cbmc.c ${CMAKE_BINARY_DIR}/test/bf_lib_cbmc.a
+    )
+
+    add_custom_target(cbmc ALL
+        DEPENDS ${CMAKE_BINARY_DIR}/test/main_cbmc
+        COMMENT "Building CBMC harness with goto-cc and static bf_lib"
+    )
+else()
+    message(WARNING "goto-cc not found, CBMC target will not be available.")
+endif()
