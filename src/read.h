@@ -1,6 +1,8 @@
 #ifndef READ_H
 #define READ_H
 
+#include <stdlib.h>
+
 struct Error {
         char *message;
 };
@@ -15,6 +17,7 @@ struct ReadReturn {
 };
 
 void clean_whitespace(char *);
-struct ReadReturn *read_file(char *);
+struct ReadReturn read_file(char *);
+struct ReadReturn validate(char *, size_t len);
 
 #endif
