@@ -131,6 +131,8 @@ if(BUILD_TESTING)
     add_subdirectory(test)
 endif()
 
+add_subdirectory(scripts)
+
 add_custom_target(debug
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
     COMMENT "Building in debug mode"
@@ -147,6 +149,7 @@ if(CLANG_FORMAT)
         COMMAND ${CLANG_FORMAT} -i ${ALL_SOURCE_FILES}
         COMMENT "Formatting source files"
     )
+    add_dependencies(fmt fmt-scripts)
 
     add_custom_target(fmt-ci
         COMMAND ${CLANG_FORMAT} --dry-run -Werror -i ${ALL_SOURCE_FILES}
@@ -183,6 +186,7 @@ if(CPPLINT)
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                 COMMENT "Linting"
             )
+            add_dependencies(lint lint-scripts)
         else()
             message(STATUS "No source files found for cpplint")
             add_custom_target(lint
@@ -247,7 +251,7 @@ if(AFL_CC)
     )
 
     add_custom_command(TARGET fuzz POST_BUILD
-        COMMAND ${CMAKE_SOURCE_DIR}/docker/run_afl_parallel.sh ${CMAKE_BINARY_DIR}/bfc_fuzz
+        COMMAND ${CMAKE_SOURCE_DIR}/scripts/run_afl_parallel.sh ${CMAKE_BINARY_DIR}/bfc_fuzz
     )
 endif()
 

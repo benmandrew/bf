@@ -2,6 +2,6 @@ FROM aflplusplus/aflplusplus:latest
 
 WORKDIR /scripts
 
-COPY ./docker/fuzz.sh ./
+COPY ./scripts/fuzz.sh ./
 
 ENTRYPOINT [ "./fuzz.sh" ]

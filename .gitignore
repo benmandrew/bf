@@ -71,3 +71,5 @@ _deps
 CMakeUserPresets.json
 
 web/server
+
+cbmc_outputs/
