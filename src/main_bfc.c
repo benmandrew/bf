@@ -55,14 +55,12 @@ int parse_options(int argc, char **argv, bool *optimise, char **program) {
                 return 1;
         }
         char *program_file = argv[optind];
-        struct ReadReturn *read_result = read_file(program_file);
-        if (read_result->type == ERROR) {
-                fprintf(stderr, "Error: %s\n",
-                        read_result->value.error.message);
+        struct ReadReturn read_result = read_file(program_file);
+        if (read_result.type == ERROR) {
+                fprintf(stderr, "Error: %s\n", read_result.value.error.message);
                 return 1;
         }
-        *program = read_result->value.program_str;
-        free(read_result);
+        *program = read_result.value.program_str;
         return 0;
 }
 

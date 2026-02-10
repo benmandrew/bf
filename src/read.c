@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "read.h"
@@ -23,9 +22,8 @@ void clean_whitespace(char *s) {
         s[j] = '\0';
 }
 
-char program_has_valid_chars(char *s) {
-        size_t program_len = strlen(s);
-        for (size_t str_i = 0; str_i < program_len; str_i++) {
+char program_has_valid_chars(char *s, size_t len) {
+        for (size_t str_i = 0; str_i < len; str_i++) {
                 switch (s[str_i]) {
                 case '+':
                 case '-':
@@ -50,10 +48,9 @@ char program_has_valid_chars(char *s) {
         return 1;
 }
 
-char program_has_balanced_jumps(char *s) {
-        size_t program_len = strlen(s);
+char program_has_balanced_jumps(char *s, size_t len) {
         size_t jump_stack_size = 0;
-        for (size_t str_i = 0; str_i < program_len; str_i++) {
+        for (size_t str_i = 0; str_i < len; str_i++) {
                 switch (s[str_i]) {
                 case '[':
                         jump_stack_size++;
@@ -71,28 +68,27 @@ char program_has_balanced_jumps(char *s) {
         return jump_stack_size == 0;
 }
 
-struct ReadReturn *validate(char *program) {
-        struct ReadReturn *result = malloc(sizeof(struct ReadReturn));
-        if (!program_has_valid_chars(program)) {
-                free(program);
-                result->type = ERROR;
-                result->value.error.message =
+struct ReadReturn validate(char *program, size_t len) {
+        struct ReadReturn result = {.type = OK, .value.program_str = NULL};
+
+        if (!program_has_valid_chars(program, len)) {
+                result.type = ERROR;
+                result.value.error.message =
                     "Program contains invalid characters";
                 return result;
         }
-        if (!program_has_balanced_jumps(program)) {
-                free(program);
-                result->type = ERROR;
-                result->value.error.message = "Program has unbalanced jumps";
+        if (!program_has_balanced_jumps(program, len)) {
+                result.type = ERROR;
+                result.value.error.message = "Program has unbalanced jumps";
                 return result;
         }
         clean_whitespace(program);
-        result->type = OK;
-        result->value.program_str = program;
+        result.type = OK;
+        result.value.program_str = program;
         return result;
 }
 
-struct ReadReturn *read_file(char *fname) {
+struct ReadReturn read_file(char *fname) {
         FILE *f = fopen(fname, "r");
         if (f == NULL) {
                 fprintf(stderr, "Opening '%s' failed\n", fname);
@@ -113,5 +109,9 @@ struct ReadReturn *read_file(char *fname) {
         }
         fclose(f);
         program[len] = '\0';
-        return validate(program);
+        struct ReadReturn result = validate(program, strlen(program));
+        if (result.type == ERROR) {
+                free(program);
+        }
+        return result;
 }
