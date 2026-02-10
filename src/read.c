@@ -110,6 +110,8 @@ struct ReadReturn read_file(char *fname) {
         fclose(f);
         program[len] = '\0';
         struct ReadReturn result = validate(program, strlen(program));
-        free(program);
+        if (result.type == ERROR) {
+                free(program);
+        }
         return result;
 }
