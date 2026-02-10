@@ -7,6 +7,8 @@ You can interact with it online [here](https://benmandrew.com/articles/compiler-
 $ docker compose up
 ```
 
+The input validation and parsing is mathematically proven correct for `bf` programs up to eight commands long using the [C Bounded Model Checker](https://github.com/diffblue/cbmc) (CBMC). Details are [here](#model-check-memory-safety).
+
 ![alt](doc/screenshot.png)
 
 ## Dependencies
@@ -24,19 +26,14 @@ $ brew install cmake llvm check expect clang-format cpplint
 ## Building
 
 ```bash
-$ mkdir build
-$ cd build
-$ cmake ..
-$ cmake --build .
+$ mkdir -p build
+$ cmake -B build
+$ cmake --build build
 ```
-
-## Running
 
 After building, the `bfc` (compiler) and `bfi` (interpreter) executables will be in the `build` directory.
 
-### Examples
-
-Compiling to a binary executable:
+To compile a `bf` program to a binary executable:
 
 ```bash
 # Generate LLVM IR
@@ -47,33 +44,45 @@ $ ./main
 Hello, World!
 ```
 
-Executing with the interpreter:
+To execute a `bf` program with the interpreter:
 
 ```bash
 $ ./build/bfi test/res/helloworld.b
 Hello, World!
 ```
 
+### Formatting and Linting
+
+```bash
+$ cmake --build build --target fmt lint
+```
+
 ### Tests
+
 ```bash
 $ cmake --build build --target tests
 ```
 
-### Code Formatting
-
-```bash
-$ cmake --build build --target fmt
-```
-
 ### Fuzzing
 
-You can fuzz test with AFL
+You can fuzz test with AFL:
 
 ```bash
 $ docker run -ti -v .:/src benmandrew/bf:fuzz
 ```
 
 If there are crashes, the offending inputs will be located in `build-fuzz/fuzz_output/default/crashes`.
+
+### Model-check memory safety
+
+Use the [C Bounded Model Checker](https://github.com/diffblue/cbmc) (CBMC) to prove the memory safety of the input validation and parsing for all programs up to a maximum program length:
+
+```bash
+$ cmake --build build --target cbmc
+$ ./scripts/cbmc_run.sh [MAX_PROGRAM_LEN]
+```
+
+The memory usage and running time of the model checker increase exponentially with `MAX_PROGRAM_LEN`, so start small, e.g. 4.
 
 ## FAQ
 
