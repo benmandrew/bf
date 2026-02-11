@@ -26,7 +26,6 @@ $ brew install cmake llvm check expect clang-format cpplint
 ## Building
 
 ```bash
-$ mkdir -p build
 $ cmake -B build
 $ cmake --build build
 ```
