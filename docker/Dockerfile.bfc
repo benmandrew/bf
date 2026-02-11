@@ -11,7 +11,7 @@ RUN apt-get update \
 COPY CMakeLists.txt /build
 COPY ./src /build/src
 
-RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DDOCKER_BUILD=ON \
 	&& cmake --build build --target bfc -j$(nproc)
 
 COPY ./go/server.go /build/src/server.go

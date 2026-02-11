@@ -125,13 +125,12 @@ set_target_properties(bfc bf_lib
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-option(BUILD_TESTING "Build tests" ON)
-if(BUILD_TESTING)
+option(DOCKER_BUILD "Docker build mode - disables tests and scripts" OFF)
+if(NOT DOCKER_BUILD)
     enable_testing()
     add_subdirectory(test)
+    add_subdirectory(scripts)
 endif()
-
-add_subdirectory(scripts)
 
 add_custom_target(debug
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
@@ -149,7 +148,10 @@ if(CLANG_FORMAT)
         COMMAND ${CLANG_FORMAT} -i ${ALL_SOURCE_FILES}
         COMMENT "Formatting source files"
     )
-    add_dependencies(fmt fmt-scripts)
+    # Only depend on fmt-scripts if not in Docker build mode
+    if(NOT DOCKER_BUILD)
+        add_dependencies(fmt fmt-scripts)
+    endif()
 
     add_custom_target(fmt-ci
         COMMAND ${CLANG_FORMAT} --dry-run -Werror -i ${ALL_SOURCE_FILES}
@@ -186,7 +188,10 @@ if(CPPLINT)
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                 COMMENT "Linting"
             )
-            add_dependencies(lint lint-scripts)
+            # Only depend on lint-scripts if not in Docker build mode
+            if(NOT DOCKER_BUILD)
+                add_dependencies(lint lint-scripts)
+            endif()
         else()
             message(STATUS "No source files found for cpplint")
             add_custom_target(lint
