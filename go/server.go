@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"time"
 )
 
 var cache map[string][]byte
 var n_requests int64
 var n_cache_hits int64
+var compilation_duration_sum_seconds float64
 
 var allowed_chars = map[rune]bool{
 	'>':  true,
@@ -93,7 +95,9 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	start := time.Now()
 	err = cmd.Run()
+	compilation_duration_sum_seconds += time.Since(start).Seconds()
 	if err != nil {
 		log.Printf("Error: %v, stderr: %s", err, stderr.String())
 		http.Error(w, stderr.String(), http.StatusBadRequest)
@@ -106,6 +110,10 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	compilations := n_requests - n_cache_hits
+	meanCompilationDuration := 0.0
+	if compilations > 0 {
+		meanCompilationDuration = compilation_duration_sum_seconds / float64(compilations)
+	}
 	fmt.Fprintf(w, "# HELP bfc_requests_total Total number of bfc execution requests\n")
 	fmt.Fprintf(w, "# TYPE bfc_requests_total counter\n")
 	fmt.Fprintf(w, "bfc_requests_total %d\n", n_requests)
@@ -115,12 +123,19 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "# HELP bfc_compilations_total Total number of bfc compilations (cache misses)\n")
 	fmt.Fprintf(w, "# TYPE bfc_compilations_total counter\n")
 	fmt.Fprintf(w, "bfc_compilations_total %d\n", compilations)
+	fmt.Fprintf(w, "# HELP bfc_compilation_duration_seconds_count Total number of timed bfc compilations\n")
+	fmt.Fprintf(w, "# TYPE bfc_compilation_duration_seconds_count counter\n")
+	fmt.Fprintf(w, "bfc_compilation_duration_seconds_count %d\n", compilations)
+	fmt.Fprintf(w, "# HELP bfc_compilation_duration_seconds_mean Mean bfc compilation duration in seconds\n")
+	fmt.Fprintf(w, "# TYPE bfc_compilation_duration_seconds_mean gauge\n")
+	fmt.Fprintf(w, "bfc_compilation_duration_seconds_mean %f\n", meanCompilationDuration)
 }
 
 func main() {
 	cache = make(map[string][]byte)
 	n_requests = 0
 	n_cache_hits = 0
+	compilation_duration_sum_seconds = 0
 	http.HandleFunc("/", runHandler)
 	http.HandleFunc("/metrics", metricsHandler)
 	log.Println("Listening on :8000 at /")
