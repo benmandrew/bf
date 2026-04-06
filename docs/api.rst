@@ -1,8 +1,6 @@
 API Reference
 =============
 
-The API reference is split by public header for easier navigation.
-
 .. toctree::
 	:maxdepth: 1
 
