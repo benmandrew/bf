@@ -9,7 +9,6 @@
         ((c) == '+' || (c) == '-' || (c) == '>' || (c) == '<' || (c) == '.' || \
          (c) == ',' || (c) == '[' || (c) == ']')
 
-// Clean whitespace and other extraneous characters from a BF program
 void clean_whitespace(char *s) {
         int64_t j = 0, i = 0;
         while (s[i] != '\0') {

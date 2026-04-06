@@ -17,8 +17,11 @@ struct context_t {
         size_t max_dp;
 };
 
+/** Initialize an interpreter context with the program loaded at pc zero. */
 struct context_t init_context(struct program p);
+/** Execute the command at the current program counter and advance execution. */
 int interp(struct context_t *ctx, int, int, bool);
+/** Render the current interpreter state as a human-readable trace string. */
 char *context_to_string(struct context_t *ctx);
 
 #endif

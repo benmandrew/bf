@@ -27,15 +27,23 @@ struct program {
         size_t length;
 };
 
+/** Compute the length of the flattened Brainfuck source string. */
 size_t program_str_length(struct program *p);
+/** Parse a cleaned Brainfuck string into the internal program form. */
 struct program string_to_program(char *s);
+/** Release a program's heap-allocated command buffer. */
 void free_program(struct program *p);
+/** Map a command type back to its Brainfuck character. */
 char cmd_type_to_char(enum cmd_type t);
+/** Expand a compressed program back into a Brainfuck source string. */
 char *program_to_string(struct program *program);
 
+/** Return whether a program contains any output commands. */
 char program_contains_output(struct program *p);
+/** Return whether a program contains any input commands. */
 char program_contains_input(struct program *p);
 
+/** Validate that a source string contains only balanced Brainfuck commands. */
 char program_is_valid(char *s);
 
 #endif

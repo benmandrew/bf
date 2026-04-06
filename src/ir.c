@@ -24,6 +24,7 @@ static struct jump_stack jump_stack_new() {
         };
 }
 
+/** Push a command and its source index onto the jump stack. */
 static void jump_stack_push(struct jump_stack *js, struct cmd *c,
                             size_t index) {
         assert(js->head < JUMP_STACK_MAX_SIZE - 1);

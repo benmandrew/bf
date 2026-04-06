@@ -9,7 +9,7 @@ $ docker compose up
 
 The input validation and parsing is mathematically proven correct for `bf` programs up to eight commands long using the [C Bounded Model Checker](https://github.com/diffblue/cbmc) (CBMC). Details are [here](#model-check-memory-safety).
 
-![alt](doc/screenshot.png)
+![alt](docs/screenshot.png)
 
 ## Dependencies
 
@@ -21,6 +21,13 @@ $ sudo apt-get install cmake llvm-dev check expect clang-format cpplint
 #### MacOS (Homebrew)
 ```bash
 $ brew install cmake llvm check expect clang-format cpplint
+```
+
+#### Documentation
+To build the docs locally, install Doxygen and the Sphinx Python packages:
+```bash
+$ brew install doxygen
+$ python3 -m pip install -r docs/requirements.txt
 ```
 
 ## Building
@@ -55,6 +62,14 @@ Hello, World!
 ```bash
 $ cmake --build build --target fmt lint
 ```
+
+### Documentation
+
+```bash
+$ cmake --build build --target docs
+```
+
+The generated HTML site is written to `build/docs/html/index.html`.
 
 ### Tests
 
