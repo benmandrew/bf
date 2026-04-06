@@ -1,3 +1,8 @@
 FROM nginx:alpine
 
-COPY ./web /usr/share/nginx/html
+COPY ./web/index.html /usr/share/nginx/html/index.html
+COPY ./web/app.js /usr/share/nginx/html/app.js
+COPY ./web/prism.css /usr/share/nginx/html/prism.css
+COPY ./web/prism.js /usr/share/nginx/html/prism.js
+COPY ./web/favicon.ico /usr/share/nginx/html/favicon.ico
+COPY ./web/style.css /usr/share/nginx/html/style.css
