@@ -3,5 +3,5 @@
 !go
 !web
 !docker
-!scripts
+!verification
 !CMakeLists.txt

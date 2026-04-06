@@ -1,6 +1,6 @@
 FROM aflplusplus/aflplusplus:latest
 
-WORKDIR /verification
+WORKDIR /scripts
 
 COPY ./verification/fuzz.sh ./
 
