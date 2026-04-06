@@ -37,103 +37,103 @@ if(NOT LLVM_FOUND)
     endforeach()
 endif()
 
+set(LLVM_AVAILABLE FALSE)
+
 if(NOT LLVM_FOUND)
-    message(FATAL_ERROR "LLVM is required but not found. Install LLVM and try again.\n"
-                        "Installation instructions:\n"
-                        "macOS (Homebrew):\n"
-                        "  brew install llvm\n"
-                        "Ubuntu/Debian:\n"
-                        "  sudo apt-get install llvm-dev\n")
+    message(WARNING "LLVM is not available. Skipping bf library and executable targets. Docs and formatting remain available.")
+else()
+    set(LLVM_AVAILABLE TRUE)
+
+    set(CMAKE_C_STANDARD 17)
+    set(CMAKE_C_STANDARD_REQUIRED ON)
+    set(CMAKE_C_EXTENSIONS ON)  # For gnu17
+
+    if(NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE Debug)
+    endif()
+
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
+
+    message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+    message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+    include_directories(${LLVM_INCLUDE_DIRS})
+    separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+    add_definitions(${LLVM_DEFINITIONS_LIST})
+
+    # Debug: Print LLVM configuration
+    message(STATUS "LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
+    message(STATUS "LLVM_LIBRARY_DIRS: ${LLVM_LIBRARY_DIRS}")
+    message(STATUS "LLVM_DEFINITIONS: ${LLVM_DEFINITIONS}")
+
+    # Use LLVM's library directory for linking
+    if(LLVM_LIBRARY_DIRS)
+        link_directories(${LLVM_LIBRARY_DIRS})
+    endif()
+
+    llvm_map_components_to_libnames(llvm_libs support core irreader)
+
+    # Use an OBJECT library for shared sources to avoid flag leakage
+    set(LIB_SOURCES
+        src/interp.c
+        src/ir.c
+        src/read.c
+        src/llvm.c
+    )
+
+    add_library(bf_obj OBJECT ${LIB_SOURCES})
+    target_include_directories(bf_obj PUBLIC src)
+    target_compile_definitions(bf_obj PUBLIC LLVM_AVAILABLE)
+    target_compile_options(bf_obj PRIVATE -fPIE)
+
+    add_library(bf_lib STATIC $<TARGET_OBJECTS:bf_obj>)
+    target_include_directories(bf_lib PUBLIC src)
+    target_link_libraries(bf_lib ${llvm_libs})
+    target_compile_definitions(bf_lib PUBLIC LLVM_AVAILABLE)
+
+    # bfi executable
+    add_executable(bfi src/main_bfi.c)
+    target_link_libraries(bfi bf_lib)
+    target_compile_options(bfi PRIVATE -fPIE
+        $<$<CONFIG:Debug>:-fsanitize=address,undefined -g -O1>
+    )
+    target_link_options(bfi PRIVATE
+        $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+    )
+    set_target_properties(bfi bf_lib 
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+
+    # bfc executable
+    add_executable(bfc src/main_bfc.c)
+    target_link_libraries(bfc bf_lib)
+    target_compile_options(bfc PRIVATE -fPIE
+        $<$<CONFIG:Debug>:-fsanitize=address,undefined -g -O1>
+    )
+    target_link_options(bfc PRIVATE
+        $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+    )
+    set_target_properties(bfc bf_lib 
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
 endif()
-
-set(CMAKE_C_STANDARD 17)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS ON)  # For gnu17
-
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
-endif()
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
-
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-
-include_directories(${LLVM_INCLUDE_DIRS})
-separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
-add_definitions(${LLVM_DEFINITIONS_LIST})
-
-# Debug: Print LLVM configuration
-message(STATUS "LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
-message(STATUS "LLVM_LIBRARY_DIRS: ${LLVM_LIBRARY_DIRS}")
-message(STATUS "LLVM_DEFINITIONS: ${LLVM_DEFINITIONS}")
-
-# Use LLVM's library directory for linking
-if(LLVM_LIBRARY_DIRS)
-    link_directories(${LLVM_LIBRARY_DIRS})
-endif()
-
-llvm_map_components_to_libnames(llvm_libs support core irreader)
-
-set(LLVM_AVAILABLE TRUE)
-
-# Use an OBJECT library for shared sources to avoid flag leakage
-set(LIB_SOURCES
-    src/interp.c
-    src/ir.c
-    src/read.c
-    src/llvm.c
-)
-
-add_library(bf_obj OBJECT ${LIB_SOURCES})
-target_include_directories(bf_obj PUBLIC src)
-target_compile_definitions(bf_obj PUBLIC LLVM_AVAILABLE)
-target_compile_options(bf_obj PRIVATE -fPIE)
-
-add_library(bf_lib STATIC $<TARGET_OBJECTS:bf_obj>)
-target_include_directories(bf_lib PUBLIC src)
-target_link_libraries(bf_lib ${llvm_libs})
-target_compile_definitions(bf_lib PUBLIC LLVM_AVAILABLE)
-
-# bfi executable
-add_executable(bfi src/main_bfi.c)
-target_link_libraries(bfi bf_lib)
-target_compile_options(bfi PRIVATE -fPIE
-    $<$<CONFIG:Debug>:-fsanitize=address,undefined -g -O1>
-)
-target_link_options(bfi PRIVATE
-    $<$<CONFIG:Debug>:-fsanitize=address,undefined>
-)
-set_target_properties(bfi bf_lib 
-    PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-)
-
-# bfc executable
-add_executable(bfc src/main_bfc.c)
-target_link_libraries(bfc bf_lib)
-target_compile_options(bfc PRIVATE -fPIE
-    $<$<CONFIG:Debug>:-fsanitize=address,undefined -g -O1>
-)
-target_link_options(bfc PRIVATE
-    $<$<CONFIG:Debug>:-fsanitize=address,undefined>
-)
-set_target_properties(bfc bf_lib 
-    PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-)
 
 option(DOCKER_BUILD "Docker build mode - disables tests and verification" OFF)
-if(NOT DOCKER_BUILD)
+if(NOT DOCKER_BUILD AND LLVM_AVAILABLE)
     enable_testing()
     add_subdirectory(test)
     add_subdirectory(verification)
-    add_subdirectory(docs)
+elseif(NOT LLVM_AVAILABLE AND NOT DOCKER_BUILD)
+    message(WARNING "Skipping test and verification subdirectories because LLVM is not available.")
 endif()
+
+add_subdirectory(docs)
 
 add_custom_target(debug
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
@@ -152,7 +152,7 @@ if(CLANG_FORMAT)
         COMMENT "Formatting source files"
     )
     # Only depend on fmt-scripts if not in Docker build mode
-    if(NOT DOCKER_BUILD)
+    if(NOT DOCKER_BUILD AND TARGET fmt-scripts)
         add_dependencies(fmt fmt-scripts)
     endif()
 
@@ -180,7 +180,7 @@ if(NOT CLANG_ANALYZE)
 endif()
 
 if(CPPLINT)
-    if (CLANG_ANALYZE)
+    if(CLANG_ANALYZE AND LLVM_AVAILABLE)
         file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.[ch]" "test/*.[ch]")
         if(LINT_SOURCE_FILES)
             add_custom_target(lint
@@ -192,7 +192,7 @@ if(CPPLINT)
                 COMMENT "Linting"
             )
             # Only depend on lint-scripts if not in Docker build mode
-            if(NOT DOCKER_BUILD)
+            if(NOT DOCKER_BUILD AND TARGET lint-scripts)
                 add_dependencies(lint lint-scripts)
             endif()
         else()
@@ -203,11 +203,30 @@ if(CPPLINT)
             )
         endif()
     else()
-        message(WARNING "clang not found, lint target will not be available")
-        add_custom_target(lint
-            COMMAND echo "Lint not available - clang not found"
-            COMMENT "Lint target disabled"
-        )
+        if(CLANG_ANALYZE AND NOT LLVM_AVAILABLE)
+            message(WARNING "LLVM not available, static analysis will be skipped in lint target.")
+        elseif(NOT CLANG_ANALYZE)
+            message(WARNING "clang not found, static analysis will be skipped in lint target.")
+        endif()
+        message(STATUS "Lint target will run cpplint only when LLVM is unavailable.")
+        file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.[ch]" "test/*.[ch]")
+        if(LINT_SOURCE_FILES)
+            add_custom_target(lint
+                COMMAND ${CMAKE_COMMAND} -E echo "--- Running cpplint ---"
+                COMMAND ${CPPLINT} --linelength=80 --quiet ${LINT_SOURCE_FILES}
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                COMMENT "Linting"
+            )
+            if(NOT DOCKER_BUILD AND TARGET lint-scripts)
+                add_dependencies(lint lint-scripts)
+            endif()
+        else()
+            message(STATUS "No source files found for cpplint")
+            add_custom_target(lint
+                COMMAND echo "No source files to lint"
+                COMMENT "Lint target (cpplint) disabled - no files found"
+            )
+        endif()
     endif()
 else()
     message(WARNING "cpplint not found, lint target will not be available")
