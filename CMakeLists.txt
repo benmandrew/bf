@@ -133,7 +133,9 @@ elseif(NOT LLVM_AVAILABLE AND NOT DOCKER_BUILD)
     message(WARNING "Skipping test and verification subdirectories because LLVM is not available.")
 endif()
 
-add_subdirectory(docs)
+if(EXISTS "${CMAKE_SOURCE_DIR}/docs")
+    add_subdirectory(docs)
+endif()
 
 add_custom_target(debug
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
