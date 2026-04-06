@@ -9,6 +9,7 @@ RUN apt-get update \
 	&& rm -rf /var/lib/apt/lists/*
 
 COPY CMakeLists.txt /build
+COPY ./cmake /build/cmake
 COPY ./src /build/src
 
 RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DDOCKER_BUILD=ON \

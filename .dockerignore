@@ -1,7 +1,7 @@
 *
 !src
-!go
 !web
 !docker
 !verification
+!cmake
 !CMakeLists.txt
