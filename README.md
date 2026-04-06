@@ -88,7 +88,7 @@ Use the [C Bounded Model Checker](https://github.com/diffblue/cbmc) (CBMC) to pr
 
 ```bash
 $ cmake --build build --target cbmc
-$ ./scripts/cbmc_run.sh [MAX_PROGRAM_LEN]
+$ ./verification/cbmc_run.sh [MAX_PROGRAM_LEN]
 ```
 
 The memory usage and running time of the model checker increase exponentially with `MAX_PROGRAM_LEN`, so start small, e.g. 4.

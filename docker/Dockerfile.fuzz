@@ -1,7 +1,7 @@
 FROM aflplusplus/aflplusplus:latest
 
-WORKDIR /scripts
+WORKDIR /verification
 
-COPY ./scripts/fuzz.sh ./
+COPY ./verification/fuzz.sh ./
 
 ENTRYPOINT [ "./fuzz.sh" ]
