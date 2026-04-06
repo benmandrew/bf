@@ -5,26 +5,28 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct context_t init_context(struct program p) {
-        struct context_t c = {.pc = 0, .p = p, .dp = 0, .max_dp = 0};
-        memset(c.data, 0, DATA_SIZE);
-        return c;
+struct context_t init_context(struct program program) {
+        struct context_t context = {
+            .pc = 0, .program = program, .dp = 0, .max_dp = 0};
+        memset(context.data, 0, DATA_SIZE);
+        return context;
 }
 
 // Convert an abstract program counter `pc` (index into cmds array) to a
 // concrete PC (index into the string representation of the program)
-size_t abstract_to_concrete_pc(size_t pc, struct program *p) {
-        assert(pc <= p->length);
+size_t abstract_to_concrete_pc(size_t abstract_pc, struct program *program) {
+        assert(abstract_pc <= program->length);
         size_t concrete_pc = 0;
-        for (size_t i = 0; i < pc; i++) {
-                switch (p->cmds[i].type) {
+        for (size_t cmd_index = 0; cmd_index < abstract_pc; cmd_index++) {
+                switch (program->cmds[cmd_index].type) {
                 case CMD_SIMPLE_INC:
                 case CMD_SIMPLE_DEC:
                 case CMD_SIMPLE_RIGHT:
                 case CMD_SIMPLE_LEFT:
                 case CMD_SIMPLE_OUTPUT:
                 case CMD_SIMPLE_INPUT:
-                        concrete_pc += p->cmds[i].value.simple_count;
+                        concrete_pc +=
+                            program->cmds[cmd_index].value.simple_count;
                         break;
                 case CMD_JUMP_FORWARD:
                 case CMD_JUMP_BACK:
@@ -32,7 +34,7 @@ size_t abstract_to_concrete_pc(size_t pc, struct program *p) {
                         break;
                 default:
                         fprintf(stderr, "Unrecognised cmd_type '%c'\n",
-                                p->cmds[i].type);
+                                program->cmds[cmd_index].type);
                         exit(1);
                 }
         }
@@ -40,8 +42,8 @@ size_t abstract_to_concrete_pc(size_t pc, struct program *p) {
 }
 
 char *context_to_string(struct context_t *ctx) {
-        size_t program_length = program_str_length(&ctx->p);
-        size_t concrete_pc = abstract_to_concrete_pc(ctx->pc, &ctx->p);
+        size_t program_length = program_str_length(&ctx->program);
+        size_t concrete_pc = abstract_to_concrete_pc(ctx->pc, &ctx->program);
         size_t buffer_size =
             8                        // "---\n    "
             + program_length         // program string
@@ -60,34 +62,34 @@ char *context_to_string(struct context_t *ctx) {
         char *front = out;
         memcpy(out, "---\n    ", 8);
         out += 8;
-        char *program_string = program_to_string(&ctx->p);
+        char *program_string = program_to_string(&ctx->program);
         memcpy(out, program_string, program_length);
         free(program_string);
         out += program_length;
         memcpy(out, "\nPC: ", 5);
         out += 5;
-        size_t i = 0;
-        for (i = 0; i < concrete_pc; i++) {
-                out[i] = ' ';
+        size_t data_index = 0;
+        for (data_index = 0; data_index < concrete_pc; data_index++) {
+                out[data_index] = ' ';
         }
         out += concrete_pc;
         memcpy(out, "^\n    ", 6);
         out += 6;
         char intermediate[5];
-        for (i = 0; i <= ctx->max_dp; i++) {
+        for (data_index = 0; data_index <= ctx->max_dp; data_index++) {
                 snprintf(intermediate, sizeof(intermediate), "%u ",
-                         ctx->data[i]);
+                         ctx->data[data_index]);
                 size_t len = strlen(intermediate);
                 memcpy(out, intermediate, len);
                 out += len;
         }
         memcpy(out, "\nDP: ", 5);
         out += 5;
-        for (i = 0; i < ctx->dp; i++) {
-                if (ctx->data[i] >= 100) {
+        for (data_index = 0; data_index < ctx->dp; data_index++) {
+                if (ctx->data[data_index] >= 100) {
                         memcpy(out, "    ", 4);
                         out += 4;
-                } else if (ctx->data[i] >= 10) {
+                } else if (ctx->data[data_index] >= 10) {
                         memcpy(out, "   ", 3);
                         out += 3;
                 } else {
@@ -125,53 +127,57 @@ void interp_comma(struct context_t *ctx, int in_fd) {
 }
 
 int interp(struct context_t *ctx, int out_fd, int in_fd, bool byte_output) {
-        assert(ctx->pc < ctx->p.length);
-        struct cmd c = ctx->p.cmds[ctx->pc];
-        switch (c.type) {
+        assert(ctx->pc < ctx->program.length);
+        struct cmd current_cmd = ctx->program.cmds[ctx->pc];
+        switch (current_cmd.type) {
         case CMD_SIMPLE_INC:
-                ctx->data[ctx->dp] += c.value.simple_count;
+                ctx->data[ctx->dp] += current_cmd.value.simple_count;
                 break;
         case CMD_SIMPLE_DEC:
-                ctx->data[ctx->dp] -= c.value.simple_count;
+                ctx->data[ctx->dp] -= current_cmd.value.simple_count;
                 break;
         case CMD_SIMPLE_RIGHT:
-                assert(ctx->dp < DATA_SIZE - c.value.simple_count);
-                ctx->dp += c.value.simple_count;
+                assert(ctx->dp < DATA_SIZE - current_cmd.value.simple_count);
+                ctx->dp += current_cmd.value.simple_count;
                 if (ctx->dp > ctx->max_dp) {
                         ctx->max_dp = ctx->dp;
                 }
                 break;
         case CMD_SIMPLE_LEFT:
-                assert(ctx->dp > c.value.simple_count - 1);
-                ctx->dp -= c.value.simple_count;
+                assert(ctx->dp > current_cmd.value.simple_count - 1);
+                ctx->dp -= current_cmd.value.simple_count;
                 break;
         case CMD_SIMPLE_OUTPUT:
-                for (size_t i = 0; i < c.value.simple_count; i++) {
+                for (size_t output_index = 0;
+                     output_index < current_cmd.value.simple_count;
+                     output_index++) {
                         interp_dot(ctx, out_fd, byte_output);
                 }
                 break;
         case CMD_SIMPLE_INPUT:
-                for (size_t i = 0; i < c.value.simple_count; i++) {
+                for (size_t input_index = 0;
+                     input_index < current_cmd.value.simple_count;
+                     input_index++) {
                         interp_comma(ctx, in_fd);
                 }
                 break;
         case CMD_JUMP_FORWARD:
                 if (ctx->data[ctx->dp] == 0) {
-                        ctx->pc = c.value.jump_index;
+                        ctx->pc = current_cmd.value.jump_index;
                 }
                 break;
         case CMD_JUMP_BACK:
                 if (ctx->data[ctx->dp] > 0) {
-                        ctx->pc = c.value.jump_index;
+                        ctx->pc = current_cmd.value.jump_index;
                 }
                 break;
         default:
                 fprintf(stderr, "Invalid character '%c'\n",
-                        cmd_type_to_char(c.type));
+                        cmd_type_to_char(current_cmd.type));
                 exit(1);
         }
         ctx->pc++;
-        if (ctx->pc >= ctx->p.length) {
+        if (ctx->pc >= ctx->program.length) {
                 return 1;
         }
         return 0;

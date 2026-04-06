@@ -70,13 +70,13 @@ int main(int argc, char **argv) {
         if (parse_options(argc, argv, &optimise, &program_str) != 0) {
                 return 1;
         }
-        struct program p = string_to_program(program_str);
+        struct program parsed_program = string_to_program(program_str);
         free(program_str);
-        LLVMModuleRef module = generate(&p);
+        LLVMModuleRef module = generate(&parsed_program);
         char *module_str = LLVMPrintModuleToString(module);
         printf("%s", module_str);
         LLVMDisposeMessage(module_str);
         dispose_module(module);
-        free(p.cmds);
+        free(parsed_program.cmds);
         return 0;
 }

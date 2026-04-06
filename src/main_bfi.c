@@ -65,11 +65,11 @@ int main(int argc, char **argv) {
         if (parse_options(argc, argv, &byte_output, &program_str) != 0) {
                 return 1;
         }
-        struct program p = string_to_program(program_str);
+        struct program parsed_program = string_to_program(program_str);
         free(program_str);
-        struct context_t ctx = init_context(p);
+        struct context_t ctx = init_context(parsed_program);
         while (!interp(&ctx, STDOUT_FILENO, STDIN_FILENO, byte_output)) {
         };
-        free(p.cmds);
+        free(parsed_program.cmds);
         return 0;
 }

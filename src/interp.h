@@ -9,10 +9,10 @@
 
 /// Mutable execution state for the Brainfuck interpreter.
 struct context_t {
-        /// Current command index in `p.cmds`.
+        /// Current command index in `program.cmds`.
         size_t pc;
         /// Parsed program being executed.
-        struct program p;
+        struct program program;
         /// Current data pointer position.
         size_t dp;
         /// Interpreter data tape.
@@ -22,9 +22,10 @@ struct context_t {
 };
 
 /// Initialize an interpreter context with the program loaded at pc zero.
-/// @param p Parsed Brainfuck program to execute.
+/// @param program Parsed Brainfuck program to execute.
 /// @return Initialized interpreter context with zeroed tape.
-struct context_t init_context(struct program p);
+struct context_t init_context(struct program program);
+
 /// Execute the command at the current program counter and advance execution.
 /// @param ctx Interpreter context.
 /// @param out_fd File descriptor used for output.
@@ -32,6 +33,7 @@ struct context_t init_context(struct program p);
 /// @param byte_output If true, emit numeric byte values.
 /// @return 1 when program execution has completed; otherwise 0.
 int interp(struct context_t *ctx, int, int, bool);
+
 /// Render the current interpreter state as a human-readable trace string.
 /// @param ctx Interpreter context to render.
 /// @return Heap-allocated formatted string; caller must free it.

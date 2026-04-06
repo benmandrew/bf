@@ -9,7 +9,7 @@
 #define JUMP_STACK_MAX_SIZE (128)
 
 struct jump_stack_frame {
-        struct cmd *c;
+        struct cmd *command;
         size_t index;
 };
 
@@ -24,33 +24,33 @@ static struct jump_stack jump_stack_new() {
         };
 }
 
-static void jump_stack_push(struct jump_stack *js, struct cmd *c,
+static void jump_stack_push(struct jump_stack *jump_stack, struct cmd *command,
                             size_t index) {
-        assert(js->head < JUMP_STACK_MAX_SIZE - 1);
-        js->stack[js->head] = (struct jump_stack_frame){
-            .c = c,
+        assert(jump_stack->head < JUMP_STACK_MAX_SIZE - 1);
+        jump_stack->stack[jump_stack->head] = (struct jump_stack_frame){
+            .command = command,
             .index = index,
         };
-        js->head++;
+        jump_stack->head++;
 }
 
-static struct jump_stack_frame jump_stack_pop(struct jump_stack *js) {
-        assert(js->head > 0);
-        js->head--;
-        return js->stack[js->head];
+static struct jump_stack_frame jump_stack_pop(struct jump_stack *jump_stack) {
+        assert(jump_stack->head > 0);
+        jump_stack->head--;
+        return jump_stack->stack[jump_stack->head];
 }
 
-size_t program_str_length(struct program *p) {
+size_t program_str_length(struct program *program) {
         size_t length = 0;
-        for (size_t i = 0; i < p->length; i++) {
-                switch (p->cmds[i].type) {
+        for (size_t cmd_index = 0; cmd_index < program->length; cmd_index++) {
+                switch (program->cmds[cmd_index].type) {
                 case CMD_SIMPLE_INC:
                 case CMD_SIMPLE_DEC:
                 case CMD_SIMPLE_RIGHT:
                 case CMD_SIMPLE_LEFT:
                 case CMD_SIMPLE_OUTPUT:
                 case CMD_SIMPLE_INPUT:
-                        length += p->cmds[i].value.simple_count;
+                        length += program->cmds[cmd_index].value.simple_count;
                         break;
                 case CMD_JUMP_FORWARD:
                 case CMD_JUMP_BACK:
@@ -58,99 +58,105 @@ size_t program_str_length(struct program *p) {
                         break;
                 default:
                         fprintf(stderr, "Unrecognised cmd_type '%c'\n",
-                                p->cmds[i].type);
+                                program->cmds[cmd_index].type);
                         exit(1);
                 }
         }
         return length;
 }
 
-size_t n_simple_consecutive(char *s, size_t start, struct cmd *c) {
-        size_t i = 0;
-        char first = s[start];
-        switch (first) {
+size_t n_simple_consecutive(char *source_str, size_t start,
+                            struct cmd *command) {
+        size_t consecutive_count = 0;
+        char first_char = source_str[start];
+        switch (first_char) {
         case '+':
-                *c = (struct cmd){.type = CMD_SIMPLE_INC,
-                                  .value.simple_count = 1};
+                *command = (struct cmd){.type = CMD_SIMPLE_INC,
+                                        .value.simple_count = 1};
                 break;
         case '-':
-                *c = (struct cmd){.type = CMD_SIMPLE_DEC,
-                                  .value.simple_count = 1};
+                *command = (struct cmd){.type = CMD_SIMPLE_DEC,
+                                        .value.simple_count = 1};
                 break;
         case '>':
-                *c = (struct cmd){.type = CMD_SIMPLE_RIGHT,
-                                  .value.simple_count = 1};
+                *command = (struct cmd){.type = CMD_SIMPLE_RIGHT,
+                                        .value.simple_count = 1};
                 break;
         case '<':
-                *c = (struct cmd){.type = CMD_SIMPLE_LEFT,
-                                  .value.simple_count = 1};
+                *command = (struct cmd){.type = CMD_SIMPLE_LEFT,
+                                        .value.simple_count = 1};
                 break;
         case '.':
-                *c = (struct cmd){.type = CMD_SIMPLE_OUTPUT,
-                                  .value.simple_count = 1};
+                *command = (struct cmd){.type = CMD_SIMPLE_OUTPUT,
+                                        .value.simple_count = 1};
                 break;
         case ',':
-                *c = (struct cmd){.type = CMD_SIMPLE_INPUT,
-                                  .value.simple_count = 1};
+                *command = (struct cmd){.type = CMD_SIMPLE_INPUT,
+                                        .value.simple_count = 1};
                 break;
         default:
-                fprintf(stderr, "Invalid character '%c'\n", s[i]);
+                fprintf(stderr, "Invalid character '%c'\n",
+                        source_str[consecutive_count]);
                 exit(1);
         }
-        size_t len = strlen(s);
-        while (s[start + i + 1] == first && start + i + 1 < len) {
-                i++;
-                c->value.simple_count++;
+        size_t source_len = strlen(source_str);
+        while (source_str[start + consecutive_count + 1] == first_char &&
+               start + consecutive_count + 1 < source_len) {
+                consecutive_count++;
+                command->value.simple_count++;
         }
-        return c->value.simple_count - 1;
+        return command->value.simple_count - 1;
 }
 
-struct program string_to_program(char *s) {
-        size_t max_cmds = strlen(s);
+struct program string_to_program(char *source_str) {
+        size_t max_cmds = strlen(source_str);
         struct cmd *cmd_arena = malloc(max_cmds * sizeof(struct cmd));
         if (!cmd_arena) {
                 fprintf(stderr, "Memory allocation failed\n");
                 exit(1);
         }
-        struct jump_stack js = jump_stack_new();
+        struct jump_stack jump_stack = jump_stack_new();
         struct jump_stack_frame back_jump_frame;
-        size_t program_len = strlen(s);
-        size_t arena_i = 0, str_i = 0;
-        for (str_i = 0; str_i < program_len; str_i++) {
-                switch (s[str_i]) {
+        size_t program_len = strlen(source_str);
+        size_t arena_index = 0;
+        size_t str_index = 0;
+        for (str_index = 0; str_index < program_len; str_index++) {
+                switch (source_str[str_index]) {
                 case '+':
                 case '-':
                 case '>':
                 case '<':
                 case '.':
                 case ',':
-                        str_i +=
-                            n_simple_consecutive(s, str_i, &cmd_arena[arena_i]);
+                        str_index += n_simple_consecutive(
+                            source_str, str_index, &cmd_arena[arena_index]);
                         break;
                 case '[':
-                        cmd_arena[arena_i] =
+                        cmd_arena[arena_index] =
                             (struct cmd){.type = CMD_JUMP_FORWARD};
-                        jump_stack_push(&js, &cmd_arena[arena_i], arena_i);
+                        jump_stack_push(&jump_stack, &cmd_arena[arena_index],
+                                        arena_index);
                         break;
                 case ']':
-                        back_jump_frame = jump_stack_pop(&js);
-                        cmd_arena[arena_i] = (struct cmd){
+                        back_jump_frame = jump_stack_pop(&jump_stack);
+                        cmd_arena[arena_index] = (struct cmd){
                             .type = CMD_JUMP_BACK,
                             .value.jump_index = back_jump_frame.index};
-                        back_jump_frame.c->value.jump_index = arena_i;
+                        back_jump_frame.command->value.jump_index = arena_index;
                         break;
                 default:
-                        fprintf(stderr, "Invalid character '%c'\n", s[str_i]);
+                        fprintf(stderr, "Invalid character '%c'\n",
+                                source_str[str_index]);
                         exit(1);
                 }
-                arena_i++;
+                arena_index++;
         }
-        assert(js.head == 0);
-        return (struct program){.cmds = cmd_arena, .length = arena_i};
+        assert(jump_stack.head == 0);
+        return (struct program){.cmds = cmd_arena, .length = arena_index};
 }
 
-char cmd_type_to_char(enum cmd_type t) {
-        switch (t) {
+char cmd_type_to_char(enum cmd_type command_type) {
+        switch (command_type) {
         case CMD_SIMPLE_INC:
                 return '+';
         case CMD_SIMPLE_DEC:
@@ -168,7 +174,7 @@ char cmd_type_to_char(enum cmd_type t) {
         case CMD_JUMP_BACK:
                 return ']';
         default:
-                fprintf(stderr, "Unrecognised cmd_type '%c'\n", t);
+                fprintf(stderr, "Unrecognised cmd_type '%c'\n", command_type);
                 exit(1);
         }
 }
@@ -176,28 +182,31 @@ char cmd_type_to_char(enum cmd_type t) {
 char *program_to_string(struct program *program) {
         size_t program_str_len = program_str_length(program);
         char *out = malloc(program_str_len * sizeof(char) + 1);
-        size_t str_i = 0;
-        for (size_t i = 0; i < program->length; i++) {
-                switch (program->cmds[i].type) {
+        size_t str_index = 0;
+        for (size_t cmd_index = 0; cmd_index < program->length; cmd_index++) {
+                switch (program->cmds[cmd_index].type) {
                 case CMD_SIMPLE_INC:
                 case CMD_SIMPLE_DEC:
                 case CMD_SIMPLE_RIGHT:
                 case CMD_SIMPLE_LEFT:
                 case CMD_SIMPLE_OUTPUT:
                 case CMD_SIMPLE_INPUT:
-                        for (size_t j = 0;
-                             j < program->cmds[i].value.simple_count; j++) {
-                                out[str_i++] =
-                                    cmd_type_to_char(program->cmds[i].type);
+                        for (size_t repeat_index = 0;
+                             repeat_index <
+                             program->cmds[cmd_index].value.simple_count;
+                             repeat_index++) {
+                                out[str_index++] = cmd_type_to_char(
+                                    program->cmds[cmd_index].type);
                         }
                         break;
                 case CMD_JUMP_FORWARD:
                 case CMD_JUMP_BACK:
-                        out[str_i++] = cmd_type_to_char(program->cmds[i].type);
+                        out[str_index++] =
+                            cmd_type_to_char(program->cmds[cmd_index].type);
                         break;
                 default:
                         fprintf(stderr, "Unrecognised cmd_type '%c'\n",
-                                program->cmds[i].type);
+                                program->cmds[cmd_index].type);
                         exit(1);
                 }
         }
@@ -205,18 +214,18 @@ char *program_to_string(struct program *program) {
         return out;
 }
 
-char program_contains_output(struct program *p) {
-        for (size_t i = 0; i < p->length; i++) {
-                if (p->cmds[i].type == CMD_SIMPLE_OUTPUT) {
+char program_contains_output(struct program *program) {
+        for (size_t cmd_index = 0; cmd_index < program->length; cmd_index++) {
+                if (program->cmds[cmd_index].type == CMD_SIMPLE_OUTPUT) {
                         return 1;
                 }
         }
         return 0;
 }
 
-char program_contains_input(struct program *p) {
-        for (size_t i = 0; i < p->length; i++) {
-                if (p->cmds[i].type == CMD_SIMPLE_INPUT) {
+char program_contains_input(struct program *program) {
+        for (size_t cmd_index = 0; cmd_index < program->length; cmd_index++) {
+                if (program->cmds[cmd_index].type == CMD_SIMPLE_INPUT) {
                         return 1;
                 }
         }

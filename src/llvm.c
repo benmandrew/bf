@@ -30,18 +30,20 @@ static struct llvm_jump_stack jump_stack_new() {
         };
 }
 
-static void jump_stack_push(struct llvm_jump_stack *js, LLVMBasicBlockRef entry,
-                            LLVMBasicBlockRef exit) {
-        assert(js->head < JUMP_STACK_MAX_SIZE - 1);
-        js->stack[js->head].entry = entry;
-        js->stack[js->head].exit = exit;
-        js->head++;
+static void jump_stack_push(struct llvm_jump_stack *jump_stack,
+                            LLVMBasicBlockRef entry_block,
+                            LLVMBasicBlockRef exit_block) {
+        assert(jump_stack->head < JUMP_STACK_MAX_SIZE - 1);
+        jump_stack->stack[jump_stack->head].entry = entry_block;
+        jump_stack->stack[jump_stack->head].exit = exit_block;
+        jump_stack->head++;
 }
 
-static struct entry_exit_pair jump_stack_pop(struct llvm_jump_stack *js) {
-        assert(js->head > 0);
-        js->head--;
-        return js->stack[js->head];
+static struct entry_exit_pair
+jump_stack_pop(struct llvm_jump_stack *jump_stack) {
+        assert(jump_stack->head > 0);
+        jump_stack->head--;
+        return jump_stack->stack[jump_stack->head];
 }
 
 struct llvm_context {
@@ -81,16 +83,16 @@ void create_getchar_declaration(struct llvm_context *ctx) {
             LLVMAddFunction(ctx->module, "getchar", ctx->getchar.type);
 }
 
-struct llvm_context create_module_preamble(struct program *p,
+struct llvm_context create_module_preamble(struct program *program,
                                            const char *name) {
         struct llvm_context ctx;
         ctx.context = LLVMContextCreate();
         ctx.module = LLVMModuleCreateWithNameInContext(name, ctx.context);
         ctx.builder = LLVMCreateBuilderInContext(ctx.context);
-        if (program_contains_output(p)) {
+        if (program_contains_output(program)) {
                 create_putchar_declaration(&ctx);
         }
-        if (program_contains_input(p)) {
+        if (program_contains_input(program)) {
                 create_getchar_declaration(&ctx);
         }
         ctx.dp = LLVMAddGlobal(ctx.module, int32_type(&ctx), "dp");
@@ -212,31 +214,35 @@ void right_bracket(struct llvm_context *ctx) {
         LLVMPositionBuilderAtEnd(ctx->builder, pair.exit);
 }
 
-LLVMModuleRef generate(struct program *p) {
-        struct llvm_context ctx = create_module_preamble(p, "main");
+LLVMModuleRef generate(struct program *program) {
+        struct llvm_context ctx = create_module_preamble(program, "main");
         create_main_function(&ctx);
-        for (size_t i = 0; i < p->length; i++) {
-                struct cmd c = p->cmds[i];
-                switch (c.type) {
+        for (size_t cmd_index = 0; cmd_index < program->length; cmd_index++) {
+                struct cmd command = program->cmds[cmd_index];
+                switch (command.type) {
                 case CMD_SIMPLE_INC:
-                        add(&ctx, c.value.simple_count);
+                        add(&ctx, command.value.simple_count);
                         break;
                 case CMD_SIMPLE_DEC:
-                        sub(&ctx, c.value.simple_count);
+                        sub(&ctx, command.value.simple_count);
                         break;
                 case CMD_SIMPLE_RIGHT:
-                        right(&ctx, c.value.simple_count);
+                        right(&ctx, command.value.simple_count);
                         break;
                 case CMD_SIMPLE_LEFT:
-                        left(&ctx, c.value.simple_count);
+                        left(&ctx, command.value.simple_count);
                         break;
                 case CMD_SIMPLE_OUTPUT:
-                        for (size_t j = 0; j < c.value.simple_count; j++) {
+                        for (size_t output_index = 0;
+                             output_index < command.value.simple_count;
+                             output_index++) {
                                 dot(&ctx);
                         }
                         break;
                 case CMD_SIMPLE_INPUT:
-                        for (size_t j = 0; j < c.value.simple_count; j++) {
+                        for (size_t input_index = 0;
+                             input_index < command.value.simple_count;
+                             input_index++) {
                                 comma(&ctx);
                         }
                         break;
@@ -247,7 +253,8 @@ LLVMModuleRef generate(struct program *p) {
                         right_bracket(&ctx);
                         break;
                 default:
-                        fprintf(stderr, "Unsupported cmd_type '%c'\n", c.type);
+                        fprintf(stderr, "Unsupported cmd_type '%c'\n",
+                                command.type);
                         exit(1);
                 }
         }

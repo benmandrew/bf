@@ -45,37 +45,42 @@ struct program {
 };
 
 /// Compute the length of the flattened Brainfuck source string.
-/// @param p Parsed program.
+/// @param program Parsed program.
 /// @return Length of expanded Brainfuck source string.
-size_t program_str_length(struct program *p);
+size_t program_str_length(struct program *program);
+
 /// Parse a cleaned Brainfuck string into the internal program form.
-/// @param s Cleaned Brainfuck source string.
+/// @param source_str Cleaned Brainfuck source string.
 /// @return Parsed program with heap-allocated command array.
-struct program string_to_program(char *s);
+struct program string_to_program(char *source_str);
+
 /// Release a program's heap-allocated command buffer.
-/// @param p Program whose command array should be released.
-void free_program(struct program *p);
+/// @param program Program whose command array should be released.
+void free_program(struct program *program);
+
 /// Map a command type back to its Brainfuck character.
-/// @param t Command type.
+/// @param command_type Command type.
 /// @return Corresponding Brainfuck symbol.
-char cmd_type_to_char(enum cmd_type t);
+char cmd_type_to_char(enum cmd_type command_type);
+
 /// Expand a compressed program back into a Brainfuck source string.
 /// @param program Parsed program.
 /// @return Heap-allocated source string; caller must free it.
 char *program_to_string(struct program *program);
 
 /// Return whether a program contains any output commands.
-/// @param p Parsed program.
+/// @param program Parsed program.
 /// @return 1 if output exists; otherwise 0.
-char program_contains_output(struct program *p);
+char program_contains_output(struct program *program);
+
 /// Return whether a program contains any input commands.
-/// @param p Parsed program.
+/// @param program Parsed program.
 /// @return 1 if input exists; otherwise 0.
-char program_contains_input(struct program *p);
+char program_contains_input(struct program *program);
 
 /// Validate that a source string contains only balanced Brainfuck commands.
-/// @param s Source string to validate.
+/// @param source_str Source string to validate.
 /// @return 1 if valid; otherwise 0.
-char program_is_valid(char *s);
+char program_is_valid(char *source_str);
 
 #endif
