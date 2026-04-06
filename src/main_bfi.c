@@ -7,7 +7,6 @@
 
 #include "interp.h"
 #include "ir.h"
-#include "llvm.h"
 #include "read.h"
 
 void print_usage(const char *program_name) {

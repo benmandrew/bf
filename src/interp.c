@@ -24,7 +24,7 @@ size_t abstract_to_concrete_pc(size_t pc, struct program *p) {
                 case CMD_SIMPLE_LEFT:
                 case CMD_SIMPLE_OUTPUT:
                 case CMD_SIMPLE_INPUT:
-                        concrete_pc += p->cmds[i].simple_count;
+                        concrete_pc += p->cmds[i].value.simple_count;
                         break;
                 case CMD_JUMP_FORWARD:
                 case CMD_JUMP_BACK:
@@ -129,40 +129,40 @@ int interp(struct context_t *ctx, int out_fd, int in_fd, bool byte_output) {
         struct cmd c = ctx->p.cmds[ctx->pc];
         switch (c.type) {
         case CMD_SIMPLE_INC:
-                ctx->data[ctx->dp] += c.simple_count;
+                ctx->data[ctx->dp] += c.value.simple_count;
                 break;
         case CMD_SIMPLE_DEC:
-                ctx->data[ctx->dp] -= c.simple_count;
+                ctx->data[ctx->dp] -= c.value.simple_count;
                 break;
         case CMD_SIMPLE_RIGHT:
-                assert(ctx->dp < DATA_SIZE - c.simple_count);
-                ctx->dp += c.simple_count;
+                assert(ctx->dp < DATA_SIZE - c.value.simple_count);
+                ctx->dp += c.value.simple_count;
                 if (ctx->dp > ctx->max_dp) {
                         ctx->max_dp = ctx->dp;
                 }
                 break;
         case CMD_SIMPLE_LEFT:
-                assert(ctx->dp > c.simple_count - 1);
-                ctx->dp -= c.simple_count;
+                assert(ctx->dp > c.value.simple_count - 1);
+                ctx->dp -= c.value.simple_count;
                 break;
         case CMD_SIMPLE_OUTPUT:
-                for (size_t i = 0; i < c.simple_count; i++) {
+                for (size_t i = 0; i < c.value.simple_count; i++) {
                         interp_dot(ctx, out_fd, byte_output);
                 }
                 break;
         case CMD_SIMPLE_INPUT:
-                for (size_t i = 0; i < c.simple_count; i++) {
+                for (size_t i = 0; i < c.value.simple_count; i++) {
                         interp_comma(ctx, in_fd);
                 }
                 break;
         case CMD_JUMP_FORWARD:
                 if (ctx->data[ctx->dp] == 0) {
-                        ctx->pc = c.jump_index;
+                        ctx->pc = c.value.jump_index;
                 }
                 break;
         case CMD_JUMP_BACK:
                 if (ctx->data[ctx->dp] > 0) {
-                        ctx->pc = c.jump_index;
+                        ctx->pc = c.value.jump_index;
                 }
                 break;
         default:

@@ -7,18 +7,34 @@
 #include "common.h"
 #include "ir.h"
 
+/// Mutable execution state for the Brainfuck interpreter.
 struct context_t {
+        /// Current command index in `p.cmds`.
         size_t pc;
+        /// Parsed program being executed.
         struct program p;
+        /// Current data pointer position.
         size_t dp;
+        /// Interpreter data tape.
         unsigned char data[DATA_SIZE];
-        // Keep track of the largest data pointer seen so far,
-        // for pretty-printing the context
+        /// Largest data pointer reached for pretty-printing.
         size_t max_dp;
 };
 
+/// Initialize an interpreter context with the program loaded at pc zero.
+/// @param p Parsed Brainfuck program to execute.
+/// @return Initialized interpreter context with zeroed tape.
 struct context_t init_context(struct program p);
+/// Execute the command at the current program counter and advance execution.
+/// @param ctx Interpreter context.
+/// @param out_fd File descriptor used for output.
+/// @param in_fd File descriptor used for input.
+/// @param byte_output If true, emit numeric byte values.
+/// @return 1 when program execution has completed; otherwise 0.
 int interp(struct context_t *ctx, int, int, bool);
+/// Render the current interpreter state as a human-readable trace string.
+/// @param ctx Interpreter context to render.
+/// @return Heap-allocated formatted string; caller must free it.
 char *context_to_string(struct context_t *ctx);
 
 #endif

@@ -127,11 +127,11 @@ set_target_properties(bfc bf_lib
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-option(DOCKER_BUILD "Docker build mode - disables tests and scripts" OFF)
+option(DOCKER_BUILD "Docker build mode - disables tests and verification" OFF)
 if(NOT DOCKER_BUILD)
     enable_testing()
     add_subdirectory(test)
-    add_subdirectory(scripts)
+    add_subdirectory(verification)
 endif()
 
 add_custom_target(debug
@@ -260,7 +260,7 @@ if(AFL_CC)
     )
 
     add_custom_command(TARGET fuzz POST_BUILD
-        COMMAND ${CMAKE_SOURCE_DIR}/scripts/run_afl_parallel.sh ${CMAKE_BINARY_DIR}/bfc_fuzz
+        COMMAND ${CMAKE_SOURCE_DIR}/verification/run_afl_parallel.sh ${CMAKE_BINARY_DIR}/bfc_fuzz
     )
 endif()
 
