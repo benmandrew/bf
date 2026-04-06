@@ -9,17 +9,27 @@ struct Error {
         char *message;
 };
 
+union ProgramOrError {
+        /// Normalized source on success.
+        char *program_str;
+        /// Error payload on failure.
+        struct Error error;
+};
+
+/// Discriminator values for ReadReturn.
+enum ReadResultType {
+        /// Read and validation succeeded.
+        OK,
+        /// Read and validation failed.
+        ERROR,
+};
+
 /// Tagged return type for reading and validating source input.
 struct ReadReturn {
         /// Result discriminator.
-        enum { OK, ERROR } type;
-
-        union {
-                /// Normalized source on success.
-                char *program_str;
-                /// Error payload on failure.
-                struct Error error;
-        } value;
+        enum ReadResultType type;
+        /// Result payload.
+        union ProgramOrError value;
 };
 
 /// Remove non-Brainfuck characters from a mutable source buffer.

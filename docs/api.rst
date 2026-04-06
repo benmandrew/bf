@@ -1,10 +1,13 @@
 API Reference
 =============
 
-The following pages are generated from the public headers under ``src/``.
+The API reference is split by public header for easier navigation.
 
-.. doxygenfile:: common.h
-.. doxygenfile:: ir.h
-.. doxygenfile:: read.h
-.. doxygenfile:: interp.h
-.. doxygenfile:: llvm.h
+.. toctree::
+	:maxdepth: 1
+
+	api_common
+	api_ir
+	api_read
+	api_interp
+	api_llvm
