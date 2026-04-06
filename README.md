@@ -23,13 +23,6 @@ $ sudo apt-get install cmake llvm-dev check expect clang-format cpplint
 $ brew install cmake llvm check expect clang-format cpplint
 ```
 
-#### Documentation
-To build the docs locally, install Doxygen and the Sphinx Python packages:
-```bash
-$ brew install doxygen
-$ python3 -m pip install -r docs/requirements.txt
-```
-
 ## Building
 
 ```bash
@@ -64,6 +57,8 @@ $ cmake --build build --target fmt lint
 ```
 
 ### Documentation
+
+Depends on Doxygen and Sphinx.
 
 ```bash
 $ cmake --build build --target docs
