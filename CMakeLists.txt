@@ -132,6 +132,7 @@ if(NOT DOCKER_BUILD)
     enable_testing()
     add_subdirectory(test)
     add_subdirectory(verification)
+    add_subdirectory(docs)
 endif()
 
 add_custom_target(debug
@@ -162,8 +163,6 @@ if(CLANG_FORMAT)
 else()
     message(WARNING "clang-format not found, formatting targets will not be available")
 endif()
-
-add_subdirectory(docs)
 
 # Lint and static/dynamic analysis tools
 file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.[ch]" "test/*.[ch]")
