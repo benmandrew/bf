@@ -50,7 +50,7 @@ size_t program_str_length(struct program *p) {
                 case CMD_SIMPLE_LEFT:
                 case CMD_SIMPLE_OUTPUT:
                 case CMD_SIMPLE_INPUT:
-                        length += p->cmds[i].simple_count;
+                        length += p->cmds[i].value.simple_count;
                         break;
                 case CMD_JUMP_FORWARD:
                 case CMD_JUMP_BACK:
@@ -70,22 +70,28 @@ size_t n_simple_consecutive(char *s, size_t start, struct cmd *c) {
         char first = s[start];
         switch (first) {
         case '+':
-                *c = (struct cmd){.type = CMD_SIMPLE_INC, .simple_count = 1};
+                *c = (struct cmd){.type = CMD_SIMPLE_INC,
+                                  .value.simple_count = 1};
                 break;
         case '-':
-                *c = (struct cmd){.type = CMD_SIMPLE_DEC, .simple_count = 1};
+                *c = (struct cmd){.type = CMD_SIMPLE_DEC,
+                                  .value.simple_count = 1};
                 break;
         case '>':
-                *c = (struct cmd){.type = CMD_SIMPLE_RIGHT, .simple_count = 1};
+                *c = (struct cmd){.type = CMD_SIMPLE_RIGHT,
+                                  .value.simple_count = 1};
                 break;
         case '<':
-                *c = (struct cmd){.type = CMD_SIMPLE_LEFT, .simple_count = 1};
+                *c = (struct cmd){.type = CMD_SIMPLE_LEFT,
+                                  .value.simple_count = 1};
                 break;
         case '.':
-                *c = (struct cmd){.type = CMD_SIMPLE_OUTPUT, .simple_count = 1};
+                *c = (struct cmd){.type = CMD_SIMPLE_OUTPUT,
+                                  .value.simple_count = 1};
                 break;
         case ',':
-                *c = (struct cmd){.type = CMD_SIMPLE_INPUT, .simple_count = 1};
+                *c = (struct cmd){.type = CMD_SIMPLE_INPUT,
+                                  .value.simple_count = 1};
                 break;
         default:
                 fprintf(stderr, "Invalid character '%c'\n", s[i]);
@@ -94,9 +100,9 @@ size_t n_simple_consecutive(char *s, size_t start, struct cmd *c) {
         size_t len = strlen(s);
         while (s[start + i + 1] == first && start + i + 1 < len) {
                 i++;
-                c->simple_count++;
+                c->value.simple_count++;
         }
-        return c->simple_count - 1;
+        return c->value.simple_count - 1;
 }
 
 struct program string_to_program(char *s) {
@@ -128,10 +134,10 @@ struct program string_to_program(char *s) {
                         break;
                 case ']':
                         back_jump_frame = jump_stack_pop(&js);
-                        cmd_arena[arena_i] =
-                            (struct cmd){.type = CMD_JUMP_BACK,
-                                         .jump_index = back_jump_frame.index};
-                        back_jump_frame.c->jump_index = arena_i;
+                        cmd_arena[arena_i] = (struct cmd){
+                            .type = CMD_JUMP_BACK,
+                            .value.jump_index = back_jump_frame.index};
+                        back_jump_frame.c->value.jump_index = arena_i;
                         break;
                 default:
                         fprintf(stderr, "Invalid character '%c'\n", s[str_i]);
@@ -179,8 +185,8 @@ char *program_to_string(struct program *program) {
                 case CMD_SIMPLE_LEFT:
                 case CMD_SIMPLE_OUTPUT:
                 case CMD_SIMPLE_INPUT:
-                        for (size_t j = 0; j < program->cmds[i].simple_count;
-                             j++) {
+                        for (size_t j = 0;
+                             j < program->cmds[i].value.simple_count; j++) {
                                 out[str_i++] =
                                     cmd_type_to_char(program->cmds[i].type);
                         }

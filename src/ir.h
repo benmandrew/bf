@@ -27,12 +27,13 @@ enum cmd_type {
 struct cmd {
         /// Command opcode.
         enum cmd_type type;
+        /// Command payload data.
         union {
                 /// Repeat count for simple commands.
                 size_t simple_count;
                 /// Matching bracket command index.
                 size_t jump_index;
-        };
+        } value;
 };
 
 /// Parsed Brainfuck program represented as an array of commands.

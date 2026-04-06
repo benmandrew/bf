@@ -36,7 +36,7 @@ if(DOXYGEN_FOUND AND Python3_Interpreter_FOUND)
     add_custom_target(docs
         COMMAND ${CMAKE_COMMAND} -E make_directory ${DOXYGEN_OUTPUT_DIR}
         COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-        COMMAND ${CMAKE_COMMAND} -E env SPHINX_DOXYGEN_XML_DIR=${DOXYGEN_OUTPUT_DIR}/xml ${DOCS_VENV_PYTHON} -m sphinx -b html ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/docs/html
+        COMMAND ${CMAKE_COMMAND} -E env SPHINX_DOXYGEN_XML_DIR=${DOXYGEN_OUTPUT_DIR}/xml ${DOCS_VENV_PYTHON} -m sphinx -W --keep-going -b html ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/docs/html
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Building Doxygen XML and Sphinx HTML documentation"
     )

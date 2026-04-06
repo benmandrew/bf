@@ -219,24 +219,24 @@ LLVMModuleRef generate(struct program *p) {
                 struct cmd c = p->cmds[i];
                 switch (c.type) {
                 case CMD_SIMPLE_INC:
-                        add(&ctx, c.simple_count);
+                        add(&ctx, c.value.simple_count);
                         break;
                 case CMD_SIMPLE_DEC:
-                        sub(&ctx, c.simple_count);
+                        sub(&ctx, c.value.simple_count);
                         break;
                 case CMD_SIMPLE_RIGHT:
-                        right(&ctx, c.simple_count);
+                        right(&ctx, c.value.simple_count);
                         break;
                 case CMD_SIMPLE_LEFT:
-                        left(&ctx, c.simple_count);
+                        left(&ctx, c.value.simple_count);
                         break;
                 case CMD_SIMPLE_OUTPUT:
-                        for (size_t j = 0; j < c.simple_count; j++) {
+                        for (size_t j = 0; j < c.value.simple_count; j++) {
                                 dot(&ctx);
                         }
                         break;
                 case CMD_SIMPLE_INPUT:
-                        for (size_t j = 0; j < c.simple_count; j++) {
+                        for (size_t j = 0; j < c.value.simple_count; j++) {
                                 comma(&ctx);
                         }
                         break;

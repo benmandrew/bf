@@ -1,5 +1,5 @@
 ``bf`` Documentation
-=================
+====================
 
 This documentation covers usage and API reference for the ``bf`` project.
 
