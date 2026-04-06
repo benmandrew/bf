@@ -22,10 +22,19 @@ struct context_t {
 };
 
 /// Initialize an interpreter context with the program loaded at pc zero.
+/// @param p Parsed Brainfuck program to execute.
+/// @return Initialized interpreter context with zeroed tape.
 struct context_t init_context(struct program p);
 /// Execute the command at the current program counter and advance execution.
+/// @param ctx Interpreter context.
+/// @param out_fd File descriptor used for output.
+/// @param in_fd File descriptor used for input.
+/// @param byte_output If true, emit numeric byte values.
+/// @return 1 when program execution has completed; otherwise 0.
 int interp(struct context_t *ctx, int, int, bool);
 /// Render the current interpreter state as a human-readable trace string.
+/// @param ctx Interpreter context to render.
+/// @return Heap-allocated formatted string; caller must free it.
 char *context_to_string(struct context_t *ctx);
 
 #endif

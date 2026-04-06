@@ -33,10 +33,16 @@ struct ReadReturn {
 };
 
 /// Remove non-Brainfuck characters from a mutable source buffer.
+/// @param s Null-terminated source buffer to clean in place.
 void clean_whitespace(char *s);
 /// Read a file, validate it, and return normalized source.
+/// @param fname Path to the source file.
+/// @return Tagged result containing normalized source or an error.
 struct ReadReturn read_file(char *fname);
 /// Validate and normalize a raw program buffer before parsing it.
+/// @param program Mutable source buffer.
+/// @param len Number of bytes to validate from `program`.
+/// @return Tagged result containing normalized source or an error.
 struct ReadReturn validate(char *program, size_t len);
 
 #endif

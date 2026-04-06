@@ -44,22 +44,37 @@ struct program {
 };
 
 /// Compute the length of the flattened Brainfuck source string.
+/// @param p Parsed program.
+/// @return Length of expanded Brainfuck source string.
 size_t program_str_length(struct program *p);
 /// Parse a cleaned Brainfuck string into the internal program form.
+/// @param s Cleaned Brainfuck source string.
+/// @return Parsed program with heap-allocated command array.
 struct program string_to_program(char *s);
 /// Release a program's heap-allocated command buffer.
+/// @param p Program whose command array should be released.
 void free_program(struct program *p);
 /// Map a command type back to its Brainfuck character.
+/// @param t Command type.
+/// @return Corresponding Brainfuck symbol.
 char cmd_type_to_char(enum cmd_type t);
 /// Expand a compressed program back into a Brainfuck source string.
+/// @param program Parsed program.
+/// @return Heap-allocated source string; caller must free it.
 char *program_to_string(struct program *program);
 
 /// Return whether a program contains any output commands.
+/// @param p Parsed program.
+/// @return 1 if output exists; otherwise 0.
 char program_contains_output(struct program *p);
 /// Return whether a program contains any input commands.
+/// @param p Parsed program.
+/// @return 1 if input exists; otherwise 0.
 char program_contains_input(struct program *p);
 
 /// Validate that a source string contains only balanced Brainfuck commands.
+/// @param s Source string to validate.
+/// @return 1 if valid; otherwise 0.
 char program_is_valid(char *s);
 
 #endif
