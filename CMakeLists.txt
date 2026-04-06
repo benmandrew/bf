@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(bf VERSION 1.0.0 LANGUAGES C CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export compile commands for tooling" FORCE)
+
 set(LLVM_POSSIBLE_PATHS
     # Homebrew paths (macOS)
     /opt/homebrew/opt/llvm
@@ -160,6 +162,8 @@ if(CLANG_FORMAT)
 else()
     message(WARNING "clang-format not found, formatting targets will not be available")
 endif()
+
+add_subdirectory(docs)
 
 # Lint and static/dynamic analysis tools
 file(GLOB_RECURSE LINT_SOURCE_FILES "src/*.[ch]" "test/*.[ch]")
