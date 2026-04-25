@@ -58,13 +58,13 @@ $ cmake --build build --target fmt lint
 
 ### Documentation
 
-Depends on Doxygen and Sphinx.
+Code docs can be accessed online at [benmandrew.com/docs/bf/](https://benmandrew.com/docs/bf/), or built locally with
 
 ```bash
 $ cmake --build build --target docs
 ```
 
-The generated HTML site is written to `build/docs/html/index.html`.
+Depends on Doxygen and Sphinx. The generated HTML site is written to `build/docs/html/index.html`.
 
 ### Tests
 
