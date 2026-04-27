@@ -3,11 +3,12 @@
 A compiler frontend for the [Brainf*ck language](https://en.wikipedia.org/wiki/Brainfuck) that outputs code in LLVM Intermediate Representation (IR), which can then be compiled to any desired target architecture with `clang`.
 
 You can interact with it online [here](https://benmandrew.com/articles/compiler-frontend), or in a self-hosted web interface accessed at [`http://localhost:8080`](http://localhost:8080) after running
+
 ```bash
 $ docker compose up
 ```
 
-The input validation and parsing is mathematically proven correct for `bf` programs up to eight commands long using the [C Bounded Model Checker](https://github.com/diffblue/cbmc) (CBMC). Details are [here](#model-check-memory-safety).
+The input validation and parsing functionality is formally verified to be memory safe for inputs up to thirteen commands long. Details are in [MODELCHECKING.md](MODELCHECKING.md).
 
 ![alt](docs/screenshot.png)
 
@@ -36,7 +37,7 @@ To compile a `bf` program to a binary executable:
 
 ```bash
 # Generate LLVM IR
-$ ./build/bfc test/res/helloworld.b > main.ll
+$ bfc test/res/helloworld.b > main.ll
 # Compile IR to binary
 $ clang main.ll -o main
 $ ./main
@@ -46,7 +47,7 @@ Hello, World!
 To execute a `bf` program with the interpreter:
 
 ```bash
-$ ./build/bfi test/res/helloworld.b
+$ bfi test/res/helloworld.b
 Hello, World!
 ```
 
@@ -81,17 +82,6 @@ $ docker run -ti -v .:/src benmandrew/bf:fuzz
 ```
 
 If there are crashes, the offending inputs will be located in `build-fuzz/fuzz_output/default/crashes`.
-
-### Model-check memory safety
-
-Use the [C Bounded Model Checker](https://github.com/diffblue/cbmc) (CBMC) to prove the memory safety of the input validation and parsing for all programs up to a maximum program length:
-
-```bash
-$ cmake --build build --target cbmc
-$ ./verification/cbmc_run.sh [MAX_PROGRAM_LEN]
-```
-
-The memory usage and running time of the model checker increase exponentially with `MAX_PROGRAM_LEN`, so start small, e.g. 4.
 
 ## FAQ
 
