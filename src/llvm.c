@@ -119,80 +119,78 @@ void create_main_function(struct llvm_context *ctx) {
 
 LLVMValueRef get_dataptr(struct llvm_context *ctx) {
         LLVMValueRef dp_value =
-            LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "dptmp");
+            LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "");
         LLVMValueRef indices[] = {LLVMConstInt(int32_type(ctx), 0, 0),
                                   dp_value};
-        LLVMValueRef data_ptr =
-            LLVMBuildGEP2(ctx->builder, data_array_type(ctx), ctx->data,
-                          indices, 2, "data_ptr");
+        LLVMValueRef data_ptr = LLVMBuildGEP2(
+            ctx->builder, data_array_type(ctx), ctx->data, indices, 2, "");
         return data_ptr;
 }
 
 void add(struct llvm_context *ctx, size_t value) {
         LLVMValueRef data_ptr = get_dataptr(ctx);
-        LLVMValueRef current_value = LLVMBuildLoad2(
-            ctx->builder, int8_type(ctx), data_ptr, "current_val");
+        LLVMValueRef current_value =
+            LLVMBuildLoad2(ctx->builder, int8_type(ctx), data_ptr, "");
         LLVMValueRef new_value =
             LLVMBuildAdd(ctx->builder, current_value,
-                         LLVMConstInt(int8_type(ctx), value, 0), "addtmp");
+                         LLVMConstInt(int8_type(ctx), value, 0), "");
         LLVMBuildStore(ctx->builder, new_value, data_ptr);
 }
 
 void sub(struct llvm_context *ctx, size_t value) {
         LLVMValueRef data_ptr = get_dataptr(ctx);
-        LLVMValueRef current_value = LLVMBuildLoad2(
-            ctx->builder, int8_type(ctx), data_ptr, "current_val");
+        LLVMValueRef current_value =
+            LLVMBuildLoad2(ctx->builder, int8_type(ctx), data_ptr, "");
         LLVMValueRef new_value =
             LLVMBuildSub(ctx->builder, current_value,
-                         LLVMConstInt(int8_type(ctx), value, 0), "subtmp");
+                         LLVMConstInt(int8_type(ctx), value, 0), "");
         LLVMBuildStore(ctx->builder, new_value, data_ptr);
 }
 
 void right(struct llvm_context *ctx, size_t value) {
         LLVMValueRef dp_value =
-            LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "dptmp");
+            LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "");
         LLVMValueRef new_dp =
             LLVMBuildAdd(ctx->builder, dp_value,
-                         LLVMConstInt(int32_type(ctx), value, 0), "righttmp");
+                         LLVMConstInt(int32_type(ctx), value, 0), "");
         LLVMBuildStore(ctx->builder, new_dp, ctx->dp);
 }
 
 void left(struct llvm_context *ctx, size_t value) {
         LLVMValueRef dp_value =
-            LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "dptmp");
+            LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "");
         LLVMValueRef new_dp =
             LLVMBuildSub(ctx->builder, dp_value,
-                         LLVMConstInt(int32_type(ctx), value, 0), "lefttmp");
+                         LLVMConstInt(int32_type(ctx), value, 0), "");
         LLVMBuildStore(ctx->builder, new_dp, ctx->dp);
 }
 
 void dot(struct llvm_context *ctx) {
         LLVMValueRef data_ptr = get_dataptr(ctx);
-        LLVMValueRef current_value = LLVMBuildLoad2(
-            ctx->builder, int8_type(ctx), data_ptr, "current_val");
-        LLVMValueRef extended_value = LLVMBuildZExt(
-            ctx->builder, current_value, int32_type(ctx), "extended_val");
+        LLVMValueRef current_value =
+            LLVMBuildLoad2(ctx->builder, int8_type(ctx), data_ptr, "");
+        LLVMValueRef extended_value =
+            LLVMBuildZExt(ctx->builder, current_value, int32_type(ctx), "");
         LLVMBuildCall2(ctx->builder, ctx->putchar.type, ctx->putchar.func,
-                       &extended_value, 1, "callputchar_tmp");
+                       &extended_value, 1, "");
 }
 
 void comma(struct llvm_context *ctx) {
         LLVMValueRef data_ptr = get_dataptr(ctx);
-        LLVMValueRef getchar_result =
-            LLVMBuildCall2(ctx->builder, ctx->getchar.type, ctx->getchar.func,
-                           NULL, 0, "callgetchar_tmp");
-        LLVMValueRef char_value = LLVMBuildTrunc(ctx->builder, getchar_result,
-                                                 int8_type(ctx), "char_val");
+        LLVMValueRef getchar_result = LLVMBuildCall2(
+            ctx->builder, ctx->getchar.type, ctx->getchar.func, NULL, 0, "");
+        LLVMValueRef char_value =
+            LLVMBuildTrunc(ctx->builder, getchar_result, int8_type(ctx), "");
         LLVMBuildStore(ctx->builder, char_value, data_ptr);
 }
 
 void left_bracket(struct llvm_context *ctx) {
         LLVMValueRef data_ptr = get_dataptr(ctx);
-        LLVMValueRef current_value = LLVMBuildLoad2(
-            ctx->builder, int8_type(ctx), data_ptr, "current_val");
+        LLVMValueRef current_value =
+            LLVMBuildLoad2(ctx->builder, int8_type(ctx), data_ptr, "");
         LLVMValueRef condition =
             LLVMBuildICmp(ctx->builder, LLVMIntNE, current_value,
-                          LLVMConstInt(int8_type(ctx), 0, 0), "loopcond");
+                          LLVMConstInt(int8_type(ctx), 0, 0), "");
         LLVMBasicBlockRef entry =
             LLVMAppendBasicBlockInContext(ctx->context, ctx->main, "entry");
         LLVMBasicBlockRef exit =
@@ -205,11 +203,11 @@ void left_bracket(struct llvm_context *ctx) {
 void right_bracket(struct llvm_context *ctx) {
         struct entry_exit_pair pair = jump_stack_pop(&ctx->js);
         LLVMValueRef data_ptr = get_dataptr(ctx);
-        LLVMValueRef current_value = LLVMBuildLoad2(
-            ctx->builder, int8_type(ctx), data_ptr, "current_val");
+        LLVMValueRef current_value =
+            LLVMBuildLoad2(ctx->builder, int8_type(ctx), data_ptr, "");
         LLVMValueRef condition =
             LLVMBuildICmp(ctx->builder, LLVMIntNE, current_value,
-                          LLVMConstInt(int8_type(ctx), 0, 0), "loopcond");
+                          LLVMConstInt(int8_type(ctx), 0, 0), "");
         LLVMBuildCondBr(ctx->builder, condition, pair.entry, pair.exit);
         LLVMPositionBuilderAtEnd(ctx->builder, pair.exit);
 }

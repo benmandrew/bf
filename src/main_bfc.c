@@ -73,9 +73,10 @@ int main(int argc, char **argv) {
         struct program parsed_program = string_to_program(program_str);
         free(program_str);
         LLVMModuleRef module = generate(&parsed_program);
-        char *module_str = LLVMPrintModuleToString(module);
-        printf("%s", module_str);
-        LLVMDisposeMessage(module_str);
+        char *err = NULL;
+        LLVMPrintModuleToFile(module, "/dev/stdout", &err);
+        if (err)
+                LLVMDisposeMessage(err);
         dispose_module(module);
         free(parsed_program.cmds);
         return 0;

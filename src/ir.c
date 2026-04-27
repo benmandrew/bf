@@ -65,7 +65,7 @@ size_t program_str_length(struct program *program) {
         return length;
 }
 
-size_t n_simple_consecutive(char *source_str, size_t start,
+size_t n_simple_consecutive(char *source_str, size_t start, size_t source_len,
                             struct cmd *command) {
         size_t consecutive_count = 0;
         char first_char = source_str[start];
@@ -99,9 +99,8 @@ size_t n_simple_consecutive(char *source_str, size_t start,
                         source_str[consecutive_count]);
                 exit(1);
         }
-        size_t source_len = strlen(source_str);
-        while (source_str[start + consecutive_count + 1] == first_char &&
-               start + consecutive_count + 1 < source_len) {
+        while (start + consecutive_count + 1 < source_len &&
+               source_str[start + consecutive_count + 1] == first_char) {
                 consecutive_count++;
                 command->value.simple_count++;
         }
@@ -109,18 +108,17 @@ size_t n_simple_consecutive(char *source_str, size_t start,
 }
 
 struct program string_to_program(char *source_str) {
-        size_t max_cmds = strlen(source_str);
-        struct cmd *cmd_arena = malloc(max_cmds * sizeof(struct cmd));
+        size_t source_len = strlen(source_str);
+        struct cmd *cmd_arena = malloc(source_len * sizeof(struct cmd));
         if (!cmd_arena) {
                 fprintf(stderr, "Memory allocation failed\n");
                 exit(1);
         }
         struct jump_stack jump_stack = jump_stack_new();
         struct jump_stack_frame back_jump_frame;
-        size_t program_len = strlen(source_str);
         size_t arena_index = 0;
         size_t str_index = 0;
-        for (str_index = 0; str_index < program_len; str_index++) {
+        for (str_index = 0; str_index < source_len; str_index++) {
                 switch (source_str[str_index]) {
                 case '+':
                 case '-':
@@ -129,7 +127,8 @@ struct program string_to_program(char *source_str) {
                 case '.':
                 case ',':
                         str_index += n_simple_consecutive(
-                            source_str, str_index, &cmd_arena[arena_index]);
+                            source_str, str_index, source_len,
+                            &cmd_arena[arena_index]);
                         break;
                 case '[':
                         cmd_arena[arena_index] =
