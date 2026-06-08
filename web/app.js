@@ -15,7 +15,7 @@
     if (!code){ irView.textContent = ''; setStatus('No input'); return; }
     setStatus('Compiling...');
     try{
-      const url = 'http://localhost:8000/compile?code=' + encodeURIComponent(code);
+      const url = '__BF_COMPILE_URL__' + encodeURIComponent(code);
       const res = await fetch(url, { method: 'GET' });
       const text = await res.text();
       if (!res.ok){
@@ -37,9 +37,9 @@
     debounceTimer = setTimeout(compile, DEBOUNCE_MS);
   }
 
-  btnCompile.addEventListener('click', compile);
+  if (btnCompile) btnCompile.addEventListener('click', compile);
 
-  btnDownload.addEventListener('click', function(){
+  if (btnDownload) btnDownload.addEventListener('click', function(){
     const text = irView.textContent || '';
     const blob = new Blob([text], {type: 'text/plain'});
     const url = URL.createObjectURL(blob);
