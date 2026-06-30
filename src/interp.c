@@ -32,6 +32,8 @@ size_t abstract_to_concrete_pc(size_t abstract_pc, struct program *program) {
                 case CMD_JUMP_BACK:
                         concrete_pc++;
                         break;
+                case CMD_CLEAR:
+                        break;
                 default:
                         fprintf(stderr, "Unrecognised cmd_type '%c'\n",
                                 program->cmds[cmd_index].type);
@@ -170,6 +172,9 @@ int interp(struct context_t *ctx, int out_fd, int in_fd, bool byte_output) {
                 if (ctx->data[ctx->dp] > 0) {
                         ctx->pc = current_cmd.value.jump_index;
                 }
+                break;
+        case CMD_CLEAR:
+                ctx->data[ctx->dp] = 0;
                 break;
         default:
                 fprintf(stderr, "Invalid character '%c'\n",

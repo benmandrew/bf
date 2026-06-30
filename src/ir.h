@@ -21,6 +21,8 @@ enum cmd_type {
         CMD_JUMP_FORWARD,
         /// `']'`: jump back if current cell is non-zero.
         CMD_JUMP_BACK,
+        /// Synthetic: set current cell to zero (replaces `[-]`/`[+]`).
+        CMD_CLEAR,
 };
 
 /// One compressed instruction in the internal Brainfuck IR.

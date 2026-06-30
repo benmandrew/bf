@@ -56,6 +56,8 @@ size_t program_str_length(struct program *program) {
                 case CMD_JUMP_BACK:
                         length++;
                         break;
+                case CMD_CLEAR:
+                        break;
                 default:
                         fprintf(stderr, "Unrecognised cmd_type '%c'\n",
                                 program->cmds[cmd_index].type);
@@ -203,6 +205,8 @@ char *program_to_string(struct program *program) {
                         out[str_index++] =
                             cmd_type_to_char(program->cmds[cmd_index].type);
                         break;
+                case CMD_CLEAR:
+                        break;
                 default:
                         fprintf(stderr, "Unrecognised cmd_type '%c'\n",
                                 program->cmds[cmd_index].type);
@@ -297,8 +301,61 @@ static void cancel_opposing(struct program *program) {
         program->length = new_len;
 }
 
+static void detect_clear_loops(struct program *program) {
+        struct cmd *new_cmds = malloc(program->length * sizeof(struct cmd));
+        size_t *old_to_new = malloc(program->length * sizeof(size_t));
+        size_t *new_to_old = malloc(program->length * sizeof(size_t));
+        if (!new_cmds || !old_to_new || !new_to_old) {
+                fprintf(stderr, "Memory allocation failed\n");
+                exit(1);
+        }
+        size_t new_len = 0;
+
+        for (size_t old = 0; old < program->length;) {
+                struct cmd c = program->cmds[old];
+                if (c.type == CMD_JUMP_FORWARD && old + 2 < program->length) {
+                        struct cmd body = program->cmds[old + 1];
+                        struct cmd close = program->cmds[old + 2];
+                        if ((body.type == CMD_SIMPLE_INC ||
+                             body.type == CMD_SIMPLE_DEC) &&
+                            close.type == CMD_JUMP_BACK &&
+                            c.value.jump_index == old + 2) {
+                                old_to_new[old] = new_len;
+                                old_to_new[old + 1] = SIZE_MAX;
+                                old_to_new[old + 2] = SIZE_MAX;
+                                new_to_old[new_len] = old;
+                                new_cmds[new_len++] =
+                                    (struct cmd){.type = CMD_CLEAR};
+                                old += 3;
+                                continue;
+                        }
+                }
+                old_to_new[old] = new_len;
+                new_to_old[new_len] = old;
+                new_cmds[new_len++] = c;
+                old++;
+        }
+
+        for (size_t i = 0; i < new_len; i++) {
+                if (new_cmds[i].type == CMD_JUMP_FORWARD ||
+                    new_cmds[i].type == CMD_JUMP_BACK) {
+                        size_t old_target =
+                            program->cmds[new_to_old[i]].value.jump_index;
+                        assert(old_to_new[old_target] != SIZE_MAX);
+                        new_cmds[i].value.jump_index = old_to_new[old_target];
+                }
+        }
+
+        free(program->cmds);
+        free(old_to_new);
+        free(new_to_old);
+        program->cmds = new_cmds;
+        program->length = new_len;
+}
+
 void optimise_program(struct program *program) {
         cancel_opposing(program);
+        detect_clear_loops(program);
 }
 
 char program_contains_input(struct program *program) {

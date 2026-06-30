@@ -184,6 +184,12 @@ void comma(struct llvm_context *ctx) {
         LLVMBuildStore(ctx->builder, char_value, data_ptr);
 }
 
+void clear(struct llvm_context *ctx) {
+        LLVMValueRef data_ptr = get_dataptr(ctx);
+        LLVMBuildStore(ctx->builder, LLVMConstInt(int8_type(ctx), 0, 0),
+                       data_ptr);
+}
+
 void left_bracket(struct llvm_context *ctx) {
         LLVMValueRef data_ptr = get_dataptr(ctx);
         LLVMValueRef current_value =
@@ -249,6 +255,9 @@ LLVMModuleRef generate(struct program *program) {
                         break;
                 case CMD_JUMP_BACK:
                         right_bracket(&ctx);
+                        break;
+                case CMD_CLEAR:
+                        clear(&ctx);
                         break;
                 default:
                         fprintf(stderr, "Unsupported cmd_type '%c'\n",

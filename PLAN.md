@@ -4,11 +4,12 @@ Five optimisations for the produced LLVM IR, implemented as separate commits.
 
 ## Status
 
-- [ ] 1. Cancel opposing simple commands
+- [x] 1. Cancel opposing simple commands
 - [ ] 2. `CMD_CLEAR` — zero-loop `[-]` → `store i8 0`
 - [ ] 3. `CMD_MULTIPLY` — multiply-loop `[->N*+<]` → multiply-add
 - [ ] 4. `dp` as `alloca` (enables `mem2reg`)
 - [ ] 5. LLVM pass pipeline gated on `-O`
+- [ ] 6. Per-optimisation TOML config file
 
 ---
 
@@ -71,3 +72,26 @@ Wires the already-parsed `--optimise`/`-O` flag from `main_bfc.c` through `gener
 `mem2reg` promotes the `dp` alloca to a register; `gvn` eliminates redundant loads of `@data` elements; `instcombine` and `simplifycfg` clean up the resulting IR.
 
 Test changes: none (FileCheck tests do not pass `-O`).
+
+---
+
+## 6. Per-optimisation TOML config file
+
+**Where**: new `src/config.h` / `src/config.c`, updated `main_bfc.c`, updated `optimise_program()` and `generate()` signatures.
+
+A flat TOML file (default `bf.toml` in the current directory, overridable with `-c`/`--config`) controls each optimisation independently:
+
+```toml
+[optimisations]
+cancel_opposing = true
+clear_loop      = true
+multiply_loop   = true
+dp_alloca       = true
+llvm_passes     = false
+```
+
+`struct opt_config` holds a boolean for each flag; a minimal built-in parser handles `[section]` headers and `key = true/false` lines. Missing file → all optimisations enabled by default. The `-O` flag becomes a shorthand for enabling all flags.
+
+`optimise_program(struct program *, const struct opt_config *)` and `generate(struct program *, const struct opt_config *)` are updated to gate each pass on its flag.
+
+Test changes: add `test/res/bf.toml` with specific flags for FileCheck regression tests if needed.
