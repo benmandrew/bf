@@ -30,12 +30,13 @@ int main(int argc, char **argv) {
                 }
                 input[input_len] = '\0';
                 clean_whitespace(input);
-                struct program p = string_to_program(input);
+                struct ReadReturn r = validate(input, strlen(input));
+                if (r.type == ERROR)
+                        continue;
+                struct program p = string_to_program(r.value.program_str);
                 optimise_program(&p);
                 LLVMModuleRef module = generate(&p, false);
                 char *module_str = LLVMPrintModuleToString(module);
-                // Optionally, do something with module_str (e.g., hash, check,
-                // etc.)
                 LLVMDisposeMessage(module_str);
                 dispose_module(module);
                 free(p.cmds);
