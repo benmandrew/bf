@@ -11,7 +11,8 @@ TARGET="${1:-${CMAKE_BINARY_DIR}/bfc_fuzz}"
 
 export MallocNanoZone=0
 export UBSAN_OPTIONS=print_stacktrace=1
-export AFL_CUSTOM_MUTATOR_LIBRARY="$(dirname "$TARGET")/bf_mutator.so"
+AFL_CUSTOM_MUTATOR_LIBRARY="$(dirname "$TARGET")/bf_mutator.so"
+export AFL_CUSTOM_MUTATOR_LIBRARY
 
 mkdir -p "$SYNC_DIR"
 

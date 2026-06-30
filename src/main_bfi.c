@@ -70,7 +70,8 @@ int main(int argc, char **argv) {
         optimise_program(&parsed_program);
         struct context_t ctx = init_context(parsed_program);
         int r;
-        while (!(r = interp(&ctx, STDOUT_FILENO, STDIN_FILENO, byte_output)));
+        while (!(r = interp(&ctx, STDOUT_FILENO, STDIN_FILENO, byte_output))) {
+        }
         free(parsed_program.cmds);
         if (r < 0) {
                 fprintf(stderr, "Error: tape pointer out of bounds\n");
