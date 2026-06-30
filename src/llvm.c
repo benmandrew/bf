@@ -1,6 +1,7 @@
 #include "llvm.h"
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -116,8 +117,8 @@ void create_main_function(struct llvm_context *ctx) {
             LLVMAppendBasicBlockInContext(ctx->context, ctx->main, "entry");
         LLVMPositionBuilderAtEnd(ctx->builder, entry_block);
         ctx->dp = LLVMBuildAlloca(ctx->builder, int32_type(ctx), "dp");
-        LLVMBuildStore(ctx->builder,
-                       LLVMConstInt(int32_type(ctx), 0, 0), ctx->dp);
+        LLVMBuildStore(ctx->builder, LLVMConstInt(int32_type(ctx), 0, 0),
+                       ctx->dp);
 }
 
 LLVMValueRef get_dataptr(struct llvm_context *ctx) {
@@ -196,18 +197,18 @@ void multiply(struct llvm_context *ctx, struct multiply_move *moves,
                 LLVMValueRef dp_value =
                     LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "");
                 LLVMValueRef offset =
-                    LLVMConstInt(int32_type(ctx), (unsigned long long)moves[i].offset, 1);
+                    LLVMConstInt(int32_type(ctx), (uint64_t)moves[i].offset, 1);
                 LLVMValueRef target_idx =
                     LLVMBuildAdd(ctx->builder, dp_value, offset, "");
                 LLVMValueRef indices[] = {LLVMConstInt(int32_type(ctx), 0, 0),
                                           target_idx};
                 LLVMValueRef target_ptr =
-                    LLVMBuildGEP2(ctx->builder, data_array_type(ctx),
-                                  ctx->data, indices, 2, "");
-                LLVMValueRef target =
-                    LLVMBuildLoad2(ctx->builder, int8_type(ctx), target_ptr, "");
+                    LLVMBuildGEP2(ctx->builder, data_array_type(ctx), ctx->data,
+                                  indices, 2, "");
+                LLVMValueRef target = LLVMBuildLoad2(
+                    ctx->builder, int8_type(ctx), target_ptr, "");
                 LLVMValueRef factor =
-                    LLVMConstInt(int8_type(ctx), (unsigned long long)moves[i].factor, 1);
+                    LLVMConstInt(int8_type(ctx), (uint64_t)moves[i].factor, 1);
                 LLVMValueRef product =
                     LLVMBuildMul(ctx->builder, counter, factor, "");
                 LLVMValueRef new_val =
@@ -306,8 +307,7 @@ LLVMModuleRef generate(struct program *program, bool optimise) {
         LLVMBuildRet(ctx.builder, LLVMConstInt(int32_type(&ctx), 0, 0));
         LLVMDisposeBuilder(ctx.builder);
         if (optimise) {
-                LLVMPassBuilderOptionsRef opts =
-                    LLVMCreatePassBuilderOptions();
+                LLVMPassBuilderOptionsRef opts = LLVMCreatePassBuilderOptions();
                 LLVMErrorRef err = LLVMRunPasses(
                     ctx.module, "mem2reg,instcombine,simplifycfg,gvn", NULL,
                     opts);

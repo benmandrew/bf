@@ -428,9 +428,9 @@ static void detect_multiply_loops(struct program *program) {
                                 if (!overflow) {
                                         for (size_t k = old; k <= close_idx;
                                              k++) {
-                                                old_to_new[k] =
-                                                    (k == old) ? new_len
-                                                               : SIZE_MAX;
+                                                old_to_new[k] = (k == old)
+                                                                    ? new_len
+                                                                    : SIZE_MAX;
                                         }
                                         new_to_old[new_len] = old;
                                         struct cmd mc = {
