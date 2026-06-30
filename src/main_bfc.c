@@ -72,6 +72,7 @@ int main(int argc, char **argv) {
         }
         struct program parsed_program = string_to_program(program_str);
         free(program_str);
+        optimise_program(&parsed_program);
         LLVMModuleRef module = generate(&parsed_program);
         char *err = NULL;
         LLVMPrintModuleToFile(module, "/dev/stdout", &err);

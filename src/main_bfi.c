@@ -67,6 +67,7 @@ int main(int argc, char **argv) {
         }
         struct program parsed_program = string_to_program(program_str);
         free(program_str);
+        optimise_program(&parsed_program);
         struct context_t ctx = init_context(parsed_program);
         while (!interp(&ctx, STDOUT_FILENO, STDIN_FILENO, byte_output)) {
         };

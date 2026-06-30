@@ -222,6 +222,85 @@ char program_contains_output(struct program *program) {
         return 0;
 }
 
+static int are_opposing(enum cmd_type a, enum cmd_type b) {
+        return (a == CMD_SIMPLE_INC && b == CMD_SIMPLE_DEC) ||
+               (a == CMD_SIMPLE_DEC && b == CMD_SIMPLE_INC) ||
+               (a == CMD_SIMPLE_RIGHT && b == CMD_SIMPLE_LEFT) ||
+               (a == CMD_SIMPLE_LEFT && b == CMD_SIMPLE_RIGHT);
+}
+
+static enum cmd_type opposite_type(enum cmd_type t) {
+        switch (t) {
+        case CMD_SIMPLE_INC:
+                return CMD_SIMPLE_DEC;
+        case CMD_SIMPLE_DEC:
+                return CMD_SIMPLE_INC;
+        case CMD_SIMPLE_RIGHT:
+                return CMD_SIMPLE_LEFT;
+        case CMD_SIMPLE_LEFT:
+                return CMD_SIMPLE_RIGHT;
+        default:
+                return t;
+        }
+}
+
+static void cancel_opposing(struct program *program) {
+        struct cmd *new_cmds = malloc(program->length * sizeof(struct cmd));
+        size_t *old_to_new = malloc(program->length * sizeof(size_t));
+        size_t *new_to_old = malloc(program->length * sizeof(size_t));
+        if (!new_cmds || !old_to_new || !new_to_old) {
+                fprintf(stderr, "Memory allocation failed\n");
+                exit(1);
+        }
+        size_t new_len = 0;
+
+        for (size_t old = 0; old < program->length; old++) {
+                struct cmd curr = program->cmds[old];
+                if (new_len > 0) {
+                        struct cmd *prev = &new_cmds[new_len - 1];
+                        if (are_opposing(prev->type, curr.type)) {
+                                size_t pc = prev->value.simple_count;
+                                size_t cc = curr.value.simple_count;
+                                if (cc > pc) {
+                                        prev->type = opposite_type(prev->type);
+                                        prev->value.simple_count = cc - pc;
+                                } else if (cc < pc) {
+                                        prev->value.simple_count = pc - cc;
+                                } else {
+                                        old_to_new[new_to_old[new_len - 1]] =
+                                            SIZE_MAX;
+                                        new_len--;
+                                }
+                                old_to_new[old] = SIZE_MAX;
+                                continue;
+                        }
+                }
+                old_to_new[old] = new_len;
+                new_to_old[new_len] = old;
+                new_cmds[new_len++] = curr;
+        }
+
+        for (size_t i = 0; i < new_len; i++) {
+                if (new_cmds[i].type == CMD_JUMP_FORWARD ||
+                    new_cmds[i].type == CMD_JUMP_BACK) {
+                        size_t old_target =
+                            program->cmds[new_to_old[i]].value.jump_index;
+                        assert(old_to_new[old_target] != SIZE_MAX);
+                        new_cmds[i].value.jump_index = old_to_new[old_target];
+                }
+        }
+
+        free(program->cmds);
+        free(old_to_new);
+        free(new_to_old);
+        program->cmds = new_cmds;
+        program->length = new_len;
+}
+
+void optimise_program(struct program *program) {
+        cancel_opposing(program);
+}
+
 char program_contains_input(struct program *program) {
         for (size_t cmd_index = 0; cmd_index < program->length; cmd_index++) {
                 if (program->cmds[cmd_index].type == CMD_SIMPLE_INPUT) {

@@ -83,4 +83,8 @@ char program_contains_input(struct program *program);
 /// @return 1 if valid; otherwise 0.
 char program_is_valid(char *source_str);
 
+/// Apply IR-level optimisations to a parsed program in-place.
+/// @param program Program to optimise.
+void optimise_program(struct program *program);
+
 #endif
