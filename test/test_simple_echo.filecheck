@@ -1,12 +1,12 @@
 ; RUN: %bf %s.b --emit-llvm | FileCheck %s
 
 ; Test brainfuck program that echoes a character: ,.
-; This should generate IR for getchar() followed by putchar()
 
 ; CHECK: ; ModuleID = 'main'
 ; CHECK: source_filename = "main"
 
-; CHECK: @dp = global i32 0
+; @dp is now an alloca inside main, not a global.
+; CHECK-NOT: @dp = global
 ; CHECK: @data = global [65536 x i8] zeroinitializer
 
 ; CHECK: declare i32 @putchar(i32)
@@ -15,16 +15,18 @@
 
 ; CHECK: define i32 @main() {
 ; CHECK: entry:
+; CHECK: %dp = alloca i32, align 4
+; CHECK: store i32 0, ptr %dp, align 4
 
 ; Input operation (,) - read character with getchar
-; CHECK: %[[DP1:.*]] = load i32, ptr @dp, align 4
+; CHECK: %[[DP1:.*]] = load i32, ptr %dp, align 4
 ; CHECK: %[[PTR1:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP1]]
 ; CHECK: %[[GETCHAR:.*]] = call i32 @getchar()
 ; CHECK: %[[TRUNC:.*]] = trunc i32 %[[GETCHAR]] to i8
 ; CHECK: store i8 %[[TRUNC]], ptr %[[PTR1]], align 1
 
 ; Output operation (.) - write character with putchar
-; CHECK: %[[DP2:.*]] = load i32, ptr @dp, align 4
+; CHECK: %[[DP2:.*]] = load i32, ptr %dp, align 4
 ; CHECK: %[[PTR2:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP2]]
 ; CHECK: %[[VAL:.*]] = load i8, ptr %[[PTR2]], align 1
 ; CHECK: %[[EXT:.*]] = zext i8 %[[VAL]] to i32

@@ -95,8 +95,6 @@ struct llvm_context create_module_preamble(struct program *program,
         if (program_contains_input(program)) {
                 create_getchar_declaration(&ctx);
         }
-        ctx.dp = LLVMAddGlobal(ctx.module, int32_type(&ctx), "dp");
-        LLVMSetInitializer(ctx.dp, LLVMConstNull(int32_type(&ctx)));
         ctx.data = LLVMAddGlobal(ctx.module, data_array_type(&ctx), "data");
         LLVMSetInitializer(ctx.data, LLVMConstNull(data_array_type(&ctx)));
         ctx.js = jump_stack_new();
@@ -115,6 +113,9 @@ void create_main_function(struct llvm_context *ctx) {
         LLVMBasicBlockRef entry_block =
             LLVMAppendBasicBlockInContext(ctx->context, ctx->main, "entry");
         LLVMPositionBuilderAtEnd(ctx->builder, entry_block);
+        ctx->dp = LLVMBuildAlloca(ctx->builder, int32_type(ctx), "dp");
+        LLVMBuildStore(ctx->builder,
+                       LLVMConstInt(int32_type(ctx), 0, 0), ctx->dp);
 }
 
 LLVMValueRef get_dataptr(struct llvm_context *ctx) {

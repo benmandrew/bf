@@ -1,42 +1,44 @@
 ; RUN: %bf %s.b --emit-llvm | FileCheck %s
 
 ; Test brainfuck program that outputs "Hi"
-; This should generate IR for setting up 'H' (72) and 'i' (105) and calling putchar
 
 ; CHECK: ; ModuleID = 'main'
 ; CHECK: source_filename = "main"
 
-; CHECK: @dp = global i32 0
+; @dp is now an alloca inside main, not a global.
+; CHECK-NOT: @dp = global
 ; CHECK: @data = global [65536 x i8] zeroinitializer
 
 ; CHECK: declare i32 @putchar(i32)
 
 ; CHECK: define i32 @main() {
 ; CHECK: entry:
+; CHECK: %dp = alloca i32, align 4
+; CHECK: store i32 0, ptr %dp, align 4
 
 ; First, build up to 'H' (ASCII 72)
-; CHECK: %[[DP1:.*]] = load i32, ptr @dp, align 4
+; CHECK: %[[DP1:.*]] = load i32, ptr %dp, align 4
 ; CHECK: %[[PTR1:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP1]]
 ; CHECK: %[[VAL1:.*]] = load i8, ptr %[[PTR1]], align 1
 ; CHECK: %[[ADD1:.*]] = add i8 %[[VAL1]], 72
 ; CHECK: store i8 %[[ADD1]], ptr %[[PTR1]], align 1
 
 ; Output 'H' with putchar
-; CHECK: %[[DP2:.*]] = load i32, ptr @dp, align 4
+; CHECK: %[[DP2:.*]] = load i32, ptr %dp, align 4
 ; CHECK: %[[PTR2:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP2]]
 ; CHECK: %[[VAL2:.*]] = load i8, ptr %[[PTR2]], align 1
 ; CHECK: %[[EXT1:.*]] = zext i8 %[[VAL2]] to i32
 ; CHECK: %[[CALL1:.*]] = call i32 @putchar(i32 %[[EXT1]])
 
 ; Add 33 more to get to 'i' (72 + 33 = 105)
-; CHECK: %[[DP3:.*]] = load i32, ptr @dp, align 4
+; CHECK: %[[DP3:.*]] = load i32, ptr %dp, align 4
 ; CHECK: %[[PTR3:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP3]]
 ; CHECK: %[[VAL3:.*]] = load i8, ptr %[[PTR3]], align 1
 ; CHECK: %[[ADD2:.*]] = add i8 %[[VAL3]], 33
 ; CHECK: store i8 %[[ADD2]], ptr %[[PTR3]], align 1
 
 ; Output 'i' with putchar
-; CHECK: %[[DP4:.*]] = load i32, ptr @dp, align 4
+; CHECK: %[[DP4:.*]] = load i32, ptr %dp, align 4
 ; CHECK: %[[PTR4:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP4]]
 ; CHECK: %[[VAL4:.*]] = load i8, ptr %[[PTR4]], align 1
 ; CHECK: %[[EXT2:.*]] = zext i8 %[[VAL4]] to i32
