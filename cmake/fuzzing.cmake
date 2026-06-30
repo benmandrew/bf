@@ -29,10 +29,23 @@ if(AFL_CC)
 endif()
 
 if(AFL_CC)
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/bf_mutator.so
+        COMMAND ${CMAKE_C_COMPILER}
+                -shared -fPIC -O2
+                -o ${CMAKE_BINARY_DIR}/bf_mutator.so
+                ${CMAKE_SOURCE_DIR}/verification/bf_mutator.c
+        DEPENDS ${CMAKE_SOURCE_DIR}/verification/bf_mutator.c
+        COMMENT "Building grammar-aware BF custom mutator"
+    )
+    add_custom_target(bf_mutator_target DEPENDS ${CMAKE_BINARY_DIR}/bf_mutator.so)
+
     add_custom_target(fuzz
         COMMENT "Fuzzing with AFL, ASan, UBSan, and valgrind"
         COMMAND ${CMAKE_COMMAND} -E echo "--- Building with AFL and sanitizers ---"
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target bfc_fuzz
+        COMMAND ${CMAKE_COMMAND} -E echo "--- Building grammar-aware custom mutator ---"
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target bf_mutator_target
         COMMAND ${CMAKE_COMMAND} -E echo "--- Copying test/fuzz seeds and dictionary to build directory ---"
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/test/fuzz ${CMAKE_BINARY_DIR}/test/fuzz
         COMMAND ${CMAKE_COMMAND} -E echo "--- Running AFL fuzzer ---"
