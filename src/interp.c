@@ -1,6 +1,7 @@
 #include "interp.h"
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +32,9 @@ size_t abstract_to_concrete_pc(size_t abstract_pc, struct program *program) {
                 case CMD_JUMP_FORWARD:
                 case CMD_JUMP_BACK:
                         concrete_pc++;
+                        break;
+                case CMD_CLEAR:
+                case CMD_MULTIPLY:
                         break;
                 default:
                         fprintf(stderr, "Unrecognised cmd_type '%c'\n",
@@ -170,6 +174,20 @@ int interp(struct context_t *ctx, int out_fd, int in_fd, bool byte_output) {
                 if (ctx->data[ctx->dp] > 0) {
                         ctx->pc = current_cmd.value.jump_index;
                 }
+                break;
+        case CMD_CLEAR:
+                ctx->data[ctx->dp] = 0;
+                break;
+        case CMD_MULTIPLY:
+                for (size_t i = 0; i < current_cmd.value.multiply.n_moves;
+                     i++) {
+                        int target = (int)ctx->dp +
+                                     current_cmd.value.multiply.moves[i].offset;
+                        ctx->data[target] +=
+                            ctx->data[ctx->dp] *
+                            (uint8_t)current_cmd.value.multiply.moves[i].factor;
+                }
+                ctx->data[ctx->dp] = 0;
                 break;
         default:
                 fprintf(stderr, "Invalid character '%c'\n",

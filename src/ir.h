@@ -21,6 +21,21 @@ enum cmd_type {
         CMD_JUMP_FORWARD,
         /// `']'`: jump back if current cell is non-zero.
         CMD_JUMP_BACK,
+        /// Synthetic: set current cell to zero (replaces `[-]`/`[+]`).
+        CMD_CLEAR,
+        /// Synthetic: multiply-add loop (replaces `[-offset1*factor1...]`).
+        CMD_MULTIPLY,
+};
+
+/// Maximum number of target cells in a CMD_MULTIPLY instruction.
+#define MULTIPLY_MOVES_MAX 8
+
+/// One (offset, factor) pair in a CMD_MULTIPLY instruction.
+struct multiply_move {
+        /// Cell offset from the current data pointer.
+        int offset;
+        /// Multiplier applied to the loop counter cell.
+        int factor;
 };
 
 /// One compressed instruction in the internal Brainfuck IR.
@@ -33,6 +48,11 @@ struct cmd {
                 size_t simple_count;
                 /// Matching bracket command index.
                 size_t jump_index;
+                /// Moves for CMD_MULTIPLY.
+                struct {
+                        struct multiply_move moves[MULTIPLY_MOVES_MAX];
+                        size_t n_moves;
+                } multiply;
         } value;
 };
 
@@ -82,5 +102,9 @@ char program_contains_input(struct program *program);
 /// @param source_str Source string to validate.
 /// @return 1 if valid; otherwise 0.
 char program_is_valid(char *source_str);
+
+/// Apply IR-level optimisations to a parsed program in-place.
+/// @param program Program to optimise.
+void optimise_program(struct program *program);
 
 #endif

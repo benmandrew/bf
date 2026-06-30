@@ -1,8 +1,11 @@
 #include "llvm.h"
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <llvm-c/Transforms/PassBuilder.h>
 
 #include "common.h"
 #include "ir.h"
@@ -95,8 +98,6 @@ struct llvm_context create_module_preamble(struct program *program,
         if (program_contains_input(program)) {
                 create_getchar_declaration(&ctx);
         }
-        ctx.dp = LLVMAddGlobal(ctx.module, int32_type(&ctx), "dp");
-        LLVMSetInitializer(ctx.dp, LLVMConstNull(int32_type(&ctx)));
         ctx.data = LLVMAddGlobal(ctx.module, data_array_type(&ctx), "data");
         LLVMSetInitializer(ctx.data, LLVMConstNull(data_array_type(&ctx)));
         ctx.js = jump_stack_new();
@@ -115,6 +116,9 @@ void create_main_function(struct llvm_context *ctx) {
         LLVMBasicBlockRef entry_block =
             LLVMAppendBasicBlockInContext(ctx->context, ctx->main, "entry");
         LLVMPositionBuilderAtEnd(ctx->builder, entry_block);
+        ctx->dp = LLVMBuildAlloca(ctx->builder, int32_type(ctx), "dp");
+        LLVMBuildStore(ctx->builder, LLVMConstInt(int32_type(ctx), 0, 0),
+                       ctx->dp);
 }
 
 LLVMValueRef get_dataptr(struct llvm_context *ctx) {
@@ -184,6 +188,43 @@ void comma(struct llvm_context *ctx) {
         LLVMBuildStore(ctx->builder, char_value, data_ptr);
 }
 
+void multiply(struct llvm_context *ctx, struct multiply_move *moves,
+              size_t n_moves) {
+        LLVMValueRef counter_ptr = get_dataptr(ctx);
+        LLVMValueRef counter =
+            LLVMBuildLoad2(ctx->builder, int8_type(ctx), counter_ptr, "");
+        for (size_t i = 0; i < n_moves; i++) {
+                LLVMValueRef dp_value =
+                    LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "");
+                LLVMValueRef offset =
+                    LLVMConstInt(int32_type(ctx), (uint64_t)moves[i].offset, 1);
+                LLVMValueRef target_idx =
+                    LLVMBuildAdd(ctx->builder, dp_value, offset, "");
+                LLVMValueRef indices[] = {LLVMConstInt(int32_type(ctx), 0, 0),
+                                          target_idx};
+                LLVMValueRef target_ptr =
+                    LLVMBuildGEP2(ctx->builder, data_array_type(ctx), ctx->data,
+                                  indices, 2, "");
+                LLVMValueRef target = LLVMBuildLoad2(
+                    ctx->builder, int8_type(ctx), target_ptr, "");
+                LLVMValueRef factor =
+                    LLVMConstInt(int8_type(ctx), (uint64_t)moves[i].factor, 1);
+                LLVMValueRef product =
+                    LLVMBuildMul(ctx->builder, counter, factor, "");
+                LLVMValueRef new_val =
+                    LLVMBuildAdd(ctx->builder, target, product, "");
+                LLVMBuildStore(ctx->builder, new_val, target_ptr);
+        }
+        LLVMBuildStore(ctx->builder, LLVMConstInt(int8_type(ctx), 0, 0),
+                       counter_ptr);
+}
+
+void clear(struct llvm_context *ctx) {
+        LLVMValueRef data_ptr = get_dataptr(ctx);
+        LLVMBuildStore(ctx->builder, LLVMConstInt(int8_type(ctx), 0, 0),
+                       data_ptr);
+}
+
 void left_bracket(struct llvm_context *ctx) {
         LLVMValueRef data_ptr = get_dataptr(ctx);
         LLVMValueRef current_value =
@@ -212,7 +253,7 @@ void right_bracket(struct llvm_context *ctx) {
         LLVMPositionBuilderAtEnd(ctx->builder, pair.exit);
 }
 
-LLVMModuleRef generate(struct program *program) {
+LLVMModuleRef generate(struct program *program, bool optimise) {
         struct llvm_context ctx = create_module_preamble(program, "main");
         create_main_function(&ctx);
         for (size_t cmd_index = 0; cmd_index < program->length; cmd_index++) {
@@ -250,6 +291,13 @@ LLVMModuleRef generate(struct program *program) {
                 case CMD_JUMP_BACK:
                         right_bracket(&ctx);
                         break;
+                case CMD_CLEAR:
+                        clear(&ctx);
+                        break;
+                case CMD_MULTIPLY:
+                        multiply(&ctx, command.value.multiply.moves,
+                                 command.value.multiply.n_moves);
+                        break;
                 default:
                         fprintf(stderr, "Unsupported cmd_type '%c'\n",
                                 command.type);
@@ -258,5 +306,17 @@ LLVMModuleRef generate(struct program *program) {
         }
         LLVMBuildRet(ctx.builder, LLVMConstInt(int32_type(&ctx), 0, 0));
         LLVMDisposeBuilder(ctx.builder);
+        if (optimise) {
+                LLVMPassBuilderOptionsRef opts = LLVMCreatePassBuilderOptions();
+                LLVMErrorRef err = LLVMRunPasses(
+                    ctx.module, "mem2reg,instcombine,simplifycfg,gvn", NULL,
+                    opts);
+                if (err) {
+                        char *msg = LLVMGetErrorMessage(err);
+                        fprintf(stderr, "Pass error: %s\n", msg);
+                        LLVMDisposeErrorMessage(msg);
+                }
+                LLVMDisposePassBuilderOptions(opts);
+        }
         return ctx.module;
 }

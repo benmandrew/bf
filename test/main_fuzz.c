@@ -31,7 +31,8 @@ int main(int argc, char **argv) {
                 input[input_len] = '\0';
                 clean_whitespace(input);
                 struct program p = string_to_program(input);
-                LLVMModuleRef module = generate(&p);
+                optimise_program(&p);
+                LLVMModuleRef module = generate(&p, false);
                 char *module_str = LLVMPrintModuleToString(module);
                 // Optionally, do something with module_str (e.g., hash, check,
                 // etc.)

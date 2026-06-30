@@ -1,0 +1,46 @@
+; RUN: %bf %s.b --emit-llvm | FileCheck %s
+
+; Test multiply-loop optimisation: >+++++[<+>-]
+; Moves dp right, sets cell[1]=5, then [<+>-] adds cell[1] into cell[0]
+; and zeros cell[1]. Optimised to CMD_MULTIPLY {offset=-1, factor=1}.
+
+; CHECK: ; ModuleID = 'main'
+; CHECK: source_filename = "main"
+
+; @dp is now an alloca inside main, not a global.
+; CHECK-NOT: @dp = global
+; CHECK: @data = global [65536 x i8] zeroinitializer
+
+; CHECK: define i32 @main() {
+; CHECK: entry:
+; CHECK: %dp = alloca i32, align 4
+; CHECK: store i32 0, ptr %dp, align 4
+
+; > (move right)
+; CHECK: %[[DP1:.*]] = load i32, ptr %dp, align 4
+; CHECK: %[[RIGHT:.*]] = add i32 %[[DP1]], 1
+; CHECK: store i32 %[[RIGHT]], ptr %dp, align 4
+
+; +++++ (set cell[1] = 5)
+; CHECK: %[[DP2:.*]] = load i32, ptr %dp, align 4
+; CHECK: %[[PTR1:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP2]]
+; CHECK: %[[VAL1:.*]] = load i8, ptr %[[PTR1]], align 1
+; CHECK: %[[ADD:.*]] = add i8 %[[VAL1]], 5
+; CHECK: store i8 %[[ADD]], ptr %[[PTR1]], align 1
+
+; CMD_MULTIPLY {offset=-1, factor=1}: load counter (cell[1]),
+; compute cell[0] += counter * 1, zero cell[1].
+; CHECK: %[[DP3:.*]] = load i32, ptr %dp, align 4
+; CHECK: %[[CPTR:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP3]]
+; CHECK: %[[COUNTER:.*]] = load i8, ptr %[[CPTR]], align 1
+; CHECK: %[[DP4:.*]] = load i32, ptr %dp, align 4
+; CHECK: %[[TIDX:.*]] = add i32 %[[DP4]], -1
+; CHECK: %[[TPTR:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[TIDX]]
+; CHECK: %[[TVAL:.*]] = load i8, ptr %[[TPTR]], align 1
+; CHECK: %[[PROD:.*]] = mul i8 %[[COUNTER]], 1
+; CHECK: %[[NEW:.*]] = add i8 %[[TVAL]], %[[PROD]]
+; CHECK: store i8 %[[NEW]], ptr %[[TPTR]], align 1
+; CHECK: store i8 0, ptr %[[CPTR]], align 1
+
+; CHECK: ret i32 0
+; CHECK: }
