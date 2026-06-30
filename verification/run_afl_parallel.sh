@@ -15,8 +15,15 @@ export AFL_CUSTOM_MUTATOR_LIBRARY="$(dirname "$TARGET")/bf_mutator.so"
 
 mkdir -p "$SYNC_DIR"
 
+CMPLOG_TARGET="${TARGET}_cmplog"
+
 # No @@ — harness reads from stdin, not a file argument
-afl-fuzz -i "$INPUT_DIR" -o "$SYNC_DIR" -x "$DICT" -M fuzzer01 "$TARGET" >/dev/null 2>&1 &
+# -c passes the CmpLog binary to the main fuzzer only; secondaries don't need it
+if [ -f "$CMPLOG_TARGET" ]; then
+    afl-fuzz -i "$INPUT_DIR" -o "$SYNC_DIR" -x "$DICT" -c "$CMPLOG_TARGET" -M fuzzer01 "$TARGET" >/dev/null 2>&1 &
+else
+    afl-fuzz -i "$INPUT_DIR" -o "$SYNC_DIR" -x "$DICT" -M fuzzer01 "$TARGET" >/dev/null 2>&1 &
+fi
 
 for i in $(seq 2 "$CORES"); do
     fuzzer=$(printf "fuzzer%02d" "$i")

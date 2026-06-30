@@ -40,12 +40,62 @@ if(AFL_CC)
     )
     add_custom_target(bf_mutator_target DEPENDS ${CMAKE_BINARY_DIR}/bf_mutator.so)
 
+    # CmpLog binary — recompile with AFL_LLVM_CMPLOG=1 so AFL++ can observe
+    # comparison operands and mutate inputs to satisfy them
+    find_program(LLVM_CONFIG_BIN NAMES llvm-config HINTS ${LLVM_TOOLS_BINARY_DIR})
+    if(LLVM_CONFIG_BIN)
+        execute_process(
+            COMMAND ${LLVM_CONFIG_BIN} --libs support core irreader passes --system-libs
+            OUTPUT_VARIABLE LLVM_RAW_LINK_FLAGS
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        separate_arguments(LLVM_LINK_FLAGS_LIST NATIVE_COMMAND "${LLVM_RAW_LINK_FLAGS}")
+
+        set(CMPLOG_INCLUDE_FLAGS "")
+        foreach(dir ${LLVM_INCLUDE_DIRS})
+            list(APPEND CMPLOG_INCLUDE_FLAGS "-I${dir}")
+        endforeach()
+
+        set(CMPLOG_LIBDIR_FLAGS "")
+        foreach(dir ${LLVM_LIBRARY_DIRS})
+            list(APPEND CMPLOG_LIBDIR_FLAGS "-L${dir}")
+        endforeach()
+
+        set(CMPLOG_SOURCES
+            ${CMAKE_SOURCE_DIR}/src/read.c
+            ${CMAKE_SOURCE_DIR}/src/ir.c
+            ${CMAKE_SOURCE_DIR}/src/llvm.c
+            ${CMAKE_SOURCE_DIR}/src/interp.c
+            ${CMAKE_SOURCE_DIR}/test/main_fuzz.c
+        )
+
+        add_custom_command(
+            OUTPUT ${CMAKE_BINARY_DIR}/bfc_fuzz_cmplog
+            COMMAND ${CMAKE_COMMAND} -E env AFL_LLVM_CMPLOG=1
+                    ${AFL_CC}
+                    -fsanitize=address,undefined -g -O1 -fPIE -pie
+                    -I${CMAKE_SOURCE_DIR}/src
+                    ${CMPLOG_INCLUDE_FLAGS}
+                    -DLLVM_AVAILABLE
+                    ${CMPLOG_SOURCES}
+                    ${CMPLOG_LIBDIR_FLAGS}
+                    ${LLVM_LINK_FLAGS_LIST}
+                    -o ${CMAKE_BINARY_DIR}/bfc_fuzz_cmplog
+            DEPENDS ${CMPLOG_SOURCES}
+            COMMENT "Building CmpLog-instrumented fuzz binary"
+            VERBATIM
+        )
+        add_custom_target(bfc_fuzz_cmplog_target DEPENDS ${CMAKE_BINARY_DIR}/bfc_fuzz_cmplog)
+    endif()
+
     add_custom_target(fuzz
         COMMENT "Fuzzing with AFL, ASan, UBSan, and valgrind"
         COMMAND ${CMAKE_COMMAND} -E echo "--- Building with AFL and sanitizers ---"
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target bfc_fuzz
         COMMAND ${CMAKE_COMMAND} -E echo "--- Building grammar-aware custom mutator ---"
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target bf_mutator_target
+        COMMAND ${CMAKE_COMMAND} -E echo "--- Building CmpLog-instrumented binary ---"
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target bfc_fuzz_cmplog_target
         COMMAND ${CMAKE_COMMAND} -E echo "--- Copying test/fuzz seeds and dictionary to build directory ---"
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/test/fuzz ${CMAKE_BINARY_DIR}/test/fuzz
         COMMAND ${CMAKE_COMMAND} -E echo "--- Running AFL fuzzer ---"
