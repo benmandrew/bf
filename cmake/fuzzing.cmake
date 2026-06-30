@@ -29,16 +29,24 @@ if(AFL_CC)
 endif()
 
 if(AFL_CC)
-    add_custom_command(
-        OUTPUT ${CMAKE_BINARY_DIR}/bf_mutator.so
-        COMMAND ${CMAKE_C_COMPILER}
-                -shared -fPIC -O2
-                -o ${CMAKE_BINARY_DIR}/bf_mutator.so
-                ${CMAKE_SOURCE_DIR}/verification/bf_mutator.c
-        DEPENDS ${CMAKE_SOURCE_DIR}/verification/bf_mutator.c
-        COMMENT "Building grammar-aware BF custom mutator"
-    )
-    add_custom_target(bf_mutator_target DEPENDS ${CMAKE_BINARY_DIR}/bf_mutator.so)
+    # Mutators must NOT be AFL-instrumented — use the plain system compiler,
+    # not CMAKE_C_COMPILER which may be afl-clang-fast in fuzz builds
+    find_program(BASE_C_COMPILER NAMES clang gcc cc)
+    if(NOT BASE_C_COMPILER)
+        message(WARNING "No plain C compiler found for bf_mutator.so; custom mutator will be skipped.")
+        add_custom_target(bf_mutator_target COMMENT "Skipping custom mutator (no plain C compiler found)")
+    else()
+        add_custom_command(
+            OUTPUT ${CMAKE_BINARY_DIR}/bf_mutator.so
+            COMMAND ${BASE_C_COMPILER}
+                    -shared -fPIC -O2
+                    -o ${CMAKE_BINARY_DIR}/bf_mutator.so
+                    ${CMAKE_SOURCE_DIR}/verification/bf_mutator.c
+            DEPENDS ${CMAKE_SOURCE_DIR}/verification/bf_mutator.c
+            COMMENT "Building grammar-aware BF custom mutator"
+        )
+        add_custom_target(bf_mutator_target DEPENDS ${CMAKE_BINARY_DIR}/bf_mutator.so)
+    endif()
 
     # CmpLog binary — recompile with AFL_LLVM_CMPLOG=1 so AFL++ can observe
     # comparison operands and mutate inputs to satisfy them
