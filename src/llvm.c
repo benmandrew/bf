@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <llvm-c/Transforms/PassBuilder.h>
+
 #include "common.h"
 #include "ir.h"
 
@@ -250,7 +252,7 @@ void right_bracket(struct llvm_context *ctx) {
         LLVMPositionBuilderAtEnd(ctx->builder, pair.exit);
 }
 
-LLVMModuleRef generate(struct program *program) {
+LLVMModuleRef generate(struct program *program, bool optimise) {
         struct llvm_context ctx = create_module_preamble(program, "main");
         create_main_function(&ctx);
         for (size_t cmd_index = 0; cmd_index < program->length; cmd_index++) {
@@ -303,5 +305,18 @@ LLVMModuleRef generate(struct program *program) {
         }
         LLVMBuildRet(ctx.builder, LLVMConstInt(int32_type(&ctx), 0, 0));
         LLVMDisposeBuilder(ctx.builder);
+        if (optimise) {
+                LLVMPassBuilderOptionsRef opts =
+                    LLVMCreatePassBuilderOptions();
+                LLVMErrorRef err = LLVMRunPasses(
+                    ctx.module, "mem2reg,instcombine,simplifycfg,gvn", NULL,
+                    opts);
+                if (err) {
+                        char *msg = LLVMGetErrorMessage(err);
+                        fprintf(stderr, "Pass error: %s\n", msg);
+                        LLVMDisposeErrorMessage(msg);
+                }
+                LLVMDisposePassBuilderOptions(opts);
+        }
         return ctx.module;
 }
