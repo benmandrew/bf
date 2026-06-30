@@ -1,0 +1,93 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+A Brainfuck-to-LLVM-IR compiler frontend written in C17. Produces two executables:
+
+- **`bfc`** — compiler: reads `.b` files (or stdin), emits LLVM IR to stdout
+- **`bfi`** — interpreter: reads `.b` files and executes them directly
+
+Run the web demo with `docker compose up` (served at `http://localhost:8080`).
+
+## Build
+
+Requires `cmake` and `llvm-dev` (see README for platform-specific install). If LLVM is not found, cmake will warn and skip all library/executable targets — only docs and formatting targets remain.
+
+```bash
+cmake -B build                        # configure (Debug by default, includes ASan+UBSan)
+cmake --build build                   # build bfc and bfi
+
+cmake -B build-release -DCMAKE_BUILD_TYPE=Release
+cmake --build build-release           # release build, no sanitizers
+```
+
+After building, `bfc` and `bfi` are in the build directory.
+
+```bash
+# Compile a .b file to binary via LLVM IR
+build/bfc test/res/helloworld.b > main.ll
+clang main.ll -o main && ./main
+
+# Interpret directly
+build/bfi test/res/helloworld.b
+```
+
+`bfc` also reads from stdin when no file argument is given.
+
+## Common Build Targets
+
+```bash
+cmake --build build --target fmt          # auto-format with clang-format
+cmake --build build --target fmt-ci       # check formatting (exits non-zero if dirty)
+cmake --build build --target lint         # cpplint + clang static analyzer
+cmake --build build --target tests        # run all test suites
+cmake --build build --target unittest     # unit tests only (requires check)
+cmake --build build --target expecttest   # expect tests only (requires expect)
+cmake --build build --target filecheck    # FileCheck tests only (requires LLVM FileCheck)
+cmake --build build --target docs         # build Sphinx+Doxygen docs
+```
+
+## Code Architecture
+
+The compiler pipeline flows through four modules in `src/`:
+
+```
+read.c  →  ir.c  →  llvm.c   (bfc path)
+read.c  →  ir.c  →  interp.c (bfi path)
+```
+
+**`read.c/h`** — Input validation and normalisation. `clean_whitespace()` strips non-BF characters in-place. `read_file()` and `validate()` both return a tagged `struct ReadReturn` (discriminated union: `OK` with `char *program_str` or `ERROR` with `struct Error`). This module is formally verified for memory safety up to 13-command inputs via CBMC (see `MODELCHECKING.md`).
+
+**`ir.c/h`** — Parsing into the internal IR. `string_to_program()` converts a cleaned source string into a `struct program` — a heap-allocated array of `struct cmd`. The IR compresses consecutive identical simple commands into a single entry with a `simple_count` field, and pre-computes matching bracket indices stored in `jump_index` (no runtime bracket matching needed during execution).
+
+**`llvm.c/h`** — LLVM IR code generation. `generate()` takes a `struct program` and returns an `LLVMModuleRef`. Uses the LLVM-C API (`llvm-c/Core.h`).
+
+**`interp.c/h`** — Tree-walking interpreter. Execution state is held in `struct context_t` (program counter, data tape of `DATA_SIZE` = 65536 bytes, data pointer). `interp()` steps one command per call and returns 1 when the program completes.
+
+**`common.h`** — Shared constant: `DATA_SIZE 65536`.
+
+## Tests
+
+Three independent test suites, all invoked via cmake:
+
+| Suite | Tool | Files | What it tests |
+|---|---|---|---|
+| Unit tests | `check` framework | `test/test_ir.c`, `test/test_interp.c` | IR parsing, interpreter step logic |
+| Expect tests | `expect` | `test/*.exp` | End-to-end `bfi` output |
+| FileCheck tests | LLVM `FileCheck` | `test/*.filecheck` | `bfc` LLVM IR output structure |
+
+FileCheck tests pipe `bfc <input.b>` output through the corresponding `.filecheck` file. On macOS, add LLVM tools to PATH: `export PATH="$PATH:$(brew --prefix)/opt/llvm/bin"`.
+
+## Coding Standards
+
+- **C17** (`gnu17` extensions enabled), `-Wall -Wextra -Werror`
+- **Formatting**: clang-format LLVM style, `IndentWidth: 8` (see `.clang-format`)
+- **Linting**: cpplint at `linelength=80`; suppressed filters: `legal/copyright`, `build/include_subdir`, `build/header_guard`, `readability/braces`
+- Debug builds automatically enable `-fsanitize=address,undefined`; on macOS suppress the spurious ASan warning with `MallocNanoZone=0`
+
+## Formal Verification and Fuzzing
+
+- **CBMC** model checking targets `read.c` memory safety. Build the harness with `cmake --build build --target cbmc`, then run `./verification/cbmc_run.sh [MAX_PROGRAM_LEN]`. Start at length 4; memory exhaustion occurs at 14+.
+- **AFL fuzzing** runs in Docker: `docker run -ti -v .:/src benmandrew/bf:fuzz`. Crashes land in `build-fuzz/fuzz_output/default/crashes/`.
