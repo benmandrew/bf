@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
                         continue;
                 struct program p = string_to_program(r.value.program_str);
                 optimise_program(&p);
-                LLVMModuleRef module = generate(&p, false);
+                LLVMModuleRef module = generate(&p, true);
                 char *module_str = LLVMPrintModuleToString(module);
                 LLVMDisposeMessage(module_str);
                 dispose_module(module);
