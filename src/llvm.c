@@ -184,6 +184,37 @@ void comma(struct llvm_context *ctx) {
         LLVMBuildStore(ctx->builder, char_value, data_ptr);
 }
 
+void multiply(struct llvm_context *ctx, struct multiply_move *moves,
+              size_t n_moves) {
+        LLVMValueRef counter_ptr = get_dataptr(ctx);
+        LLVMValueRef counter =
+            LLVMBuildLoad2(ctx->builder, int8_type(ctx), counter_ptr, "");
+        for (size_t i = 0; i < n_moves; i++) {
+                LLVMValueRef dp_value =
+                    LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "");
+                LLVMValueRef offset =
+                    LLVMConstInt(int32_type(ctx), (unsigned long long)moves[i].offset, 1);
+                LLVMValueRef target_idx =
+                    LLVMBuildAdd(ctx->builder, dp_value, offset, "");
+                LLVMValueRef indices[] = {LLVMConstInt(int32_type(ctx), 0, 0),
+                                          target_idx};
+                LLVMValueRef target_ptr =
+                    LLVMBuildGEP2(ctx->builder, data_array_type(ctx),
+                                  ctx->data, indices, 2, "");
+                LLVMValueRef target =
+                    LLVMBuildLoad2(ctx->builder, int8_type(ctx), target_ptr, "");
+                LLVMValueRef factor =
+                    LLVMConstInt(int8_type(ctx), (unsigned long long)moves[i].factor, 1);
+                LLVMValueRef product =
+                    LLVMBuildMul(ctx->builder, counter, factor, "");
+                LLVMValueRef new_val =
+                    LLVMBuildAdd(ctx->builder, target, product, "");
+                LLVMBuildStore(ctx->builder, new_val, target_ptr);
+        }
+        LLVMBuildStore(ctx->builder, LLVMConstInt(int8_type(ctx), 0, 0),
+                       counter_ptr);
+}
+
 void clear(struct llvm_context *ctx) {
         LLVMValueRef data_ptr = get_dataptr(ctx);
         LLVMBuildStore(ctx->builder, LLVMConstInt(int8_type(ctx), 0, 0),
@@ -258,6 +289,10 @@ LLVMModuleRef generate(struct program *program) {
                         break;
                 case CMD_CLEAR:
                         clear(&ctx);
+                        break;
+                case CMD_MULTIPLY:
+                        multiply(&ctx, command.value.multiply.moves,
+                                 command.value.multiply.n_moves);
                         break;
                 default:
                         fprintf(stderr, "Unsupported cmd_type '%c'\n",

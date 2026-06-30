@@ -57,6 +57,7 @@ size_t program_str_length(struct program *program) {
                         length++;
                         break;
                 case CMD_CLEAR:
+                case CMD_MULTIPLY:
                         break;
                 default:
                         fprintf(stderr, "Unrecognised cmd_type '%c'\n",
@@ -206,6 +207,7 @@ char *program_to_string(struct program *program) {
                             cmd_type_to_char(program->cmds[cmd_index].type);
                         break;
                 case CMD_CLEAR:
+                case CMD_MULTIPLY:
                         break;
                 default:
                         fprintf(stderr, "Unrecognised cmd_type '%c'\n",
@@ -353,9 +355,125 @@ static void detect_clear_loops(struct program *program) {
         program->length = new_len;
 }
 
+#define DELTA_RANGE 64
+
+static void detect_multiply_loops(struct program *program) {
+        struct cmd *new_cmds = malloc(program->length * sizeof(struct cmd));
+        size_t *old_to_new = malloc(program->length * sizeof(size_t));
+        size_t *new_to_old = malloc(program->length * sizeof(size_t));
+        if (!new_cmds || !old_to_new || !new_to_old) {
+                fprintf(stderr, "Memory allocation failed\n");
+                exit(1);
+        }
+        size_t new_len = 0;
+
+        for (size_t old = 0; old < program->length;) {
+                struct cmd c = program->cmds[old];
+                if (c.type == CMD_JUMP_FORWARD) {
+                        size_t close_idx = c.value.jump_index;
+                        int valid = 1;
+                        int dp_delta = 0;
+                        int deltas[2 * DELTA_RANGE + 1];
+                        memset(deltas, 0, sizeof(deltas));
+
+                        for (size_t k = old + 1; k < close_idx && valid; k++) {
+                                struct cmd bk = program->cmds[k];
+                                switch (bk.type) {
+                                case CMD_SIMPLE_RIGHT:
+                                        dp_delta += (int)bk.value.simple_count;
+                                        if (dp_delta > DELTA_RANGE ||
+                                            dp_delta < -DELTA_RANGE)
+                                                valid = 0;
+                                        break;
+                                case CMD_SIMPLE_LEFT:
+                                        dp_delta -= (int)bk.value.simple_count;
+                                        if (dp_delta > DELTA_RANGE ||
+                                            dp_delta < -DELTA_RANGE)
+                                                valid = 0;
+                                        break;
+                                case CMD_SIMPLE_INC:
+                                        deltas[dp_delta + DELTA_RANGE] +=
+                                            (int)bk.value.simple_count;
+                                        break;
+                                case CMD_SIMPLE_DEC:
+                                        deltas[dp_delta + DELTA_RANGE] -=
+                                            (int)bk.value.simple_count;
+                                        break;
+                                default:
+                                        valid = 0;
+                                        break;
+                                }
+                        }
+
+                        if (valid && dp_delta == 0 &&
+                            deltas[DELTA_RANGE] == -1) {
+                                struct multiply_move moves[MULTIPLY_MOVES_MAX];
+                                size_t n_moves = 0;
+                                int overflow = 0;
+                                for (int d = -DELTA_RANGE;
+                                     d <= DELTA_RANGE && !overflow; d++) {
+                                        if (d == 0 ||
+                                            deltas[d + DELTA_RANGE] == 0)
+                                                continue;
+                                        if (n_moves >= MULTIPLY_MOVES_MAX) {
+                                                overflow = 1;
+                                                break;
+                                        }
+                                        moves[n_moves++] =
+                                            (struct multiply_move){
+                                                .offset = d,
+                                                .factor =
+                                                    deltas[d + DELTA_RANGE]};
+                                }
+                                if (!overflow) {
+                                        for (size_t k = old; k <= close_idx;
+                                             k++) {
+                                                old_to_new[k] =
+                                                    (k == old) ? new_len
+                                                               : SIZE_MAX;
+                                        }
+                                        new_to_old[new_len] = old;
+                                        struct cmd mc = {
+                                            .type = CMD_MULTIPLY,
+                                            .value.multiply.n_moves = n_moves};
+                                        for (size_t i = 0; i < n_moves; i++)
+                                                mc.value.multiply.moves[i] =
+                                                    moves[i];
+                                        new_cmds[new_len++] = mc;
+                                        old = close_idx + 1;
+                                        continue;
+                                }
+                        }
+                }
+                old_to_new[old] = new_len;
+                new_to_old[new_len] = old;
+                new_cmds[new_len++] = c;
+                old++;
+        }
+
+        for (size_t i = 0; i < new_len; i++) {
+                if (new_cmds[i].type == CMD_JUMP_FORWARD ||
+                    new_cmds[i].type == CMD_JUMP_BACK) {
+                        size_t old_target =
+                            program->cmds[new_to_old[i]].value.jump_index;
+                        assert(old_to_new[old_target] != SIZE_MAX);
+                        new_cmds[i].value.jump_index = old_to_new[old_target];
+                }
+        }
+
+        free(program->cmds);
+        free(old_to_new);
+        free(new_to_old);
+        program->cmds = new_cmds;
+        program->length = new_len;
+}
+
+#undef DELTA_RANGE
+
 void optimise_program(struct program *program) {
         cancel_opposing(program);
         detect_clear_loops(program);
+        detect_multiply_loops(program);
 }
 
 char program_contains_input(struct program *program) {
