@@ -31,7 +31,8 @@ struct context_t init_context(struct program program);
 /// @param out_fd File descriptor used for output.
 /// @param in_fd File descriptor used for input.
 /// @param byte_output If true, emit numeric byte values.
-/// @return 1 when program execution has completed; otherwise 0.
+/// @return 1 when execution completes normally, -1 if the tape pointer moves
+///         out of bounds, 0 while still executing.
 int interp(struct context_t *ctx, int, int, bool);
 
 /// Render the current interpreter state as a human-readable trace string.

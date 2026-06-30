@@ -131,7 +131,8 @@ void interp_comma(struct context_t *ctx, int in_fd) {
 }
 
 int interp(struct context_t *ctx, int out_fd, int in_fd, bool byte_output) {
-        assert(ctx->pc < ctx->program.length);
+        if (ctx->pc >= ctx->program.length)
+                return 1;
         struct cmd current_cmd = ctx->program.cmds[ctx->pc];
         switch (current_cmd.type) {
         case CMD_SIMPLE_INC:
@@ -141,14 +142,16 @@ int interp(struct context_t *ctx, int out_fd, int in_fd, bool byte_output) {
                 ctx->data[ctx->dp] -= current_cmd.value.simple_count;
                 break;
         case CMD_SIMPLE_RIGHT:
-                assert(ctx->dp < DATA_SIZE - current_cmd.value.simple_count);
+                if (current_cmd.value.simple_count >= DATA_SIZE - ctx->dp)
+                        return -1;
                 ctx->dp += current_cmd.value.simple_count;
                 if (ctx->dp > ctx->max_dp) {
                         ctx->max_dp = ctx->dp;
                 }
                 break;
         case CMD_SIMPLE_LEFT:
-                assert(ctx->dp > current_cmd.value.simple_count - 1);
+                if (current_cmd.value.simple_count > ctx->dp)
+                        return -1;
                 ctx->dp -= current_cmd.value.simple_count;
                 break;
         case CMD_SIMPLE_OUTPUT:
