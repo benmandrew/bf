@@ -33,9 +33,8 @@ if(AFL_CC)
         COMMENT "Fuzzing with AFL, ASan, UBSan, and valgrind"
         COMMAND ${CMAKE_COMMAND} -E echo "--- Building with AFL and sanitizers ---"
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target bfc_fuzz
-        COMMAND ${CMAKE_COMMAND} -E echo "--- Copying only *.b files from test/fuzz to build directory ---"
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/test/fuzz
-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/test/fuzz/*.b ${CMAKE_BINARY_DIR}/test/fuzz/
+        COMMAND ${CMAKE_COMMAND} -E echo "--- Copying test/fuzz seeds and dictionary to build directory ---"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/test/fuzz ${CMAKE_BINARY_DIR}/test/fuzz
         COMMAND ${CMAKE_COMMAND} -E echo "--- Running AFL fuzzer ---"
     )
 
