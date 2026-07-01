@@ -13,7 +13,13 @@ Run the web demo with `docker compose up` (served at `http://localhost:8080`).
 
 ## Build
 
-Requires `cmake` and `llvm-dev` (see README for platform-specific install). If LLVM is not found, cmake will warn and skip all library/executable targets — only docs and formatting targets remain.
+The Nix flake (`flake.nix`) provides a devShell with every tool the build needs — cmake, LLVM/clang, `check`, `expect`, `clang-format`, `cpplint`, Doxygen, Graphviz, Python/Sphinx, `shfmt`, `shellcheck` — pinned via `flake.lock`. This is the primary, CI-verified workflow:
+
+```bash
+nix develop                           # enter the devShell; run everything below inside it
+```
+
+Manual dependency installation (`cmake`, `llvm-dev`, see README) remains an alternative if not using Nix. If LLVM is not found, cmake will warn and skip all library/executable targets — only docs and formatting targets remain.
 
 ```bash
 cmake -B build                        # configure (Debug by default, includes ASan+UBSan)
@@ -78,7 +84,7 @@ Three independent test suites, all invoked via cmake:
 | Expect tests | `expect` | `test/*.exp` | End-to-end `bfi` output |
 | FileCheck tests | LLVM `FileCheck` | `test/*.filecheck` | `bfc` LLVM IR output structure |
 
-FileCheck tests pipe `bfc <input.b>` output through the corresponding `.filecheck` file. On macOS, add LLVM tools to PATH: `export PATH="$PATH:$(brew --prefix)/opt/llvm/bin"`.
+FileCheck tests pipe `bfc <input.b>` output through the corresponding `.filecheck` file. `FileCheck` is on `PATH` automatically inside `nix develop`; for a manual macOS install, add LLVM tools to PATH: `export PATH="$PATH:$(brew --prefix)/opt/llvm/bin"`.
 
 ## Coding Standards
 
@@ -88,6 +94,8 @@ FileCheck tests pipe `bfc <input.b>` output through the corresponding `.filechec
 - Debug builds automatically enable `-fsanitize=address,undefined`; on macOS suppress the spurious ASan warning with `MallocNanoZone=0`
 
 ## Formal Verification and Fuzzing
+
+Neither of these is provided by the Nix devShell (`goto-cc` and AFL are outside its scope) — install `cbmc` separately, or use Docker for fuzzing.
 
 - **CBMC** model checking targets `read.c` memory safety. Build the harness with `cmake --build build --target cbmc`, then run `./verification/cbmc_run.sh [MAX_PROGRAM_LEN]`. Start at length 4; memory exhaustion occurs at 14+.
 - **AFL fuzzing** runs in Docker: `docker run -ti -v .:/src benmandrew/bf:fuzz`. Crashes land in `build-fuzz/fuzz_output/default/crashes/`.

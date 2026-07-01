@@ -14,15 +14,28 @@ The input validation and parsing functionality is formally verified to be memory
 
 ## Dependencies
 
+The project ships a [Nix flake](https://nixos.wiki/wiki/Flakes) with a devShell providing every tool the build needs — cmake, LLVM/clang, `check`, `expect`, `clang-format`, `cpplint`, Doxygen, Graphviz, Python/Sphinx, `shfmt`, and `shellcheck` — pinned via `flake.lock` for reproducibility. This is what CI uses, and is the recommended way to build locally:
+
+```bash
+$ nix develop
+```
+
+Every command in this README can be run unmodified inside that shell.
+
+<details>
+<summary>Manual install (alternative to Nix)</summary>
+
 #### Ubuntu/Debian
 ```bash
-$ sudo apt-get install cmake llvm-dev check expect clang-format cpplint
+$ sudo apt-get install cmake llvm-dev check expect clang-format cpplint doxygen graphviz
 ```
 
 #### MacOS (Homebrew)
 ```bash
-$ brew install cmake llvm check expect clang-format cpplint
+$ brew install cmake llvm check expect clang-format cpplint doxygen graphviz
 ```
+
+</details>
 
 ## Building
 
@@ -65,7 +78,7 @@ Code docs can be accessed online at [benmandrew.com/docs/bf/](https://benmandrew
 $ cmake --build build --target docs
 ```
 
-Depends on Doxygen and Sphinx. The generated HTML site is written to `build/docs/html/index.html`.
+Depends on Doxygen and Sphinx, both provided by the Nix devShell. The generated HTML site is written to `build/docs/html/index.html`.
 
 ### Tests
 
