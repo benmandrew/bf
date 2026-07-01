@@ -12,43 +12,57 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Setup dependencies
-        uses: ./.github/actions/setup-deps
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - name: Cache Nix store
+        uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
       - name: Check code formatting
         run: |
           mkdir -p build
-          cmake -B build -S .
-          cmake --build build --target fmt-ci
+          nix develop -c cmake -B build -S .
+          nix develop -c cmake --build build --target fmt-ci
 
   lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Setup dependencies
-        uses: ./.github/actions/setup-deps
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - name: Cache Nix store
+        uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
       - name: Configure CMake
         run: |
-          cmake -B build -S .
+          nix develop -c cmake -B build -S .
       - name: Run lint
         run: |
-          cmake --build build --target lint
+          nix develop -c cmake --build build --target lint
 
   docs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Setup dependencies
-        uses: ./.github/actions/setup-deps
-      - name: Install documentation dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y doxygen graphviz python3-venv
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - name: Cache Nix store
+        uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
       - name: Build documentation
         run: |
-          cmake -B build -S .
-          cmake --build build --target docs
+          nix develop -c cmake -B build -S .
+          nix develop -c cmake --build build --target docs
 
   test:
     strategy:
@@ -59,15 +73,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Setup dependencies
-        uses: ./.github/actions/setup-deps
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - name: Cache Nix store
+        uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
       - name: Configure CMake
         run: |
-          cmake -B build -S . -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          nix develop -c cmake -B build -S . -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
       - name: Build
-        run: cmake --build build --config ${{ matrix.build_type }}
+        run: nix develop -c cmake --build build --config ${{ matrix.build_type }}
       - name: Test
-        run: cmake --build build --target tests
+        run: nix develop -c cmake --build build --target tests
 
   docker:
     name: Push Docker Image (${{ matrix.image }}-${{ matrix.name }})
