@@ -22,6 +22,8 @@ $ nix develop
 
 Every command in this README can be run unmodified inside that shell.
 
+A `.envrc` is checked in, so with [direnv](https://direnv.net/) the shell loads on entering the directory — `direnv allow` once, and `nix develop` becomes unnecessary. Installing [nix-direnv](https://github.com/nix-community/nix-direnv) alongside it is worthwhile: it caches the shell so re-entry is instant and stops the garbage collector from reclaiming the dependencies.
+
 <details>
 <summary>Manual install (alternative to Nix)</summary>
 

@@ -56,6 +56,7 @@ build-*/
 
 .vscode/
 .cache
+.direnv/
 
 CMakeLists.txt.user
 CMakeCache.txt
