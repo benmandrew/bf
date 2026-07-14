@@ -91,6 +91,8 @@ Loops that `optimise_program()` rewrites into `CMD_CLEAR` or `CMD_MULTIPLY` lowe
 $ cmake --build build --target fmt lint
 ```
 
+The C sources go through clang-format and cpplint. The shell and Python under `scripts/` and `verification/` go through `shfmt -i 4 -ci`, `shellcheck` and `ruff`, which `cmake/scripts.cmake` attaches to the same `fmt`, `fmt-ci` and `lint` targets. Every one of those tools comes from the devShell and is invoked by name rather than searched for, so a build outside `nix develop` that is missing one fails on it rather than skipping it silently.
+
 ### Documentation
 
 Code docs can be accessed online at [benmandrew.com/docs/bf/](https://benmandrew.com/docs/bf/), or built locally with

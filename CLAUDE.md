@@ -13,7 +13,7 @@ Run the web demo with `docker compose up` (served at `http://localhost:8080`).
 
 ## Build
 
-The Nix flake (`flake.nix`) provides a devShell with every tool the build needs — cmake, LLVM/clang, `check`, `expect`, `clang-format`, `cpplint`, Doxygen, Graphviz, Python/Sphinx, `shfmt`, `shellcheck` — pinned via `flake.lock`. This is the primary, CI-verified workflow:
+The Nix flake (`flake.nix`) provides a devShell with every tool the build needs — cmake, LLVM/clang, `check`, `expect`, `clang-format`, `cpplint`, Doxygen, Graphviz, Python, `ruff`, `shfmt`, `shellcheck` — pinned via `flake.lock`. This is the primary, CI-verified workflow. Sphinx is the exception: `docs/CMakeLists.txt` pip-installs it into a venv from `docs/requirements.txt` at build time, so the docs target needs network access and is not pinned by the flake.
 
 ```bash
 nix develop                           # enter the devShell; run everything below inside it
@@ -53,9 +53,9 @@ opt -passes=dot-cfg-only -disable-output fib.ll && dot -Tpng .main.dot -o cfg.pn
 ## Common Build Targets
 
 ```bash
-cmake --build build --target fmt          # auto-format with clang-format
+cmake --build build --target fmt          # clang-format (C) + shfmt/ruff (scripts)
 cmake --build build --target fmt-ci       # check formatting (exits non-zero if dirty)
-cmake --build build --target lint         # cpplint + clang static analyzer
+cmake --build build --target lint         # cpplint + clang analyzer + shellcheck/ruff
 cmake --build build --target tests        # run all test suites
 cmake --build build --target unittest     # unit tests only (requires check)
 cmake --build build --target expecttest   # expect tests only (requires expect)
@@ -98,6 +98,7 @@ FileCheck tests pipe `bfc <input.b>` output through the corresponding `.filechec
 
 - **C17** (`gnu17` extensions enabled), `-Wall -Wextra -Werror`
 - **Formatting**: clang-format LLVM style, `IndentWidth: 8` (see `.clang-format`)
+- **Scripts**: shell is `shfmt -i 4 -ci` + shellcheck, Python is `ruff format` + `ruff check`; both wired into `fmt`/`fmt-ci`/`lint` by `cmake/scripts.cmake`
 - **Linting**: cpplint at `linelength=80`; suppressed filters: `legal/copyright`, `build/include_subdir`, `build/header_guard`, `readability/braces`
 - Debug builds automatically enable `-fsanitize=address,undefined`; on macOS suppress the spurious ASan warning with `MallocNanoZone=0`
 

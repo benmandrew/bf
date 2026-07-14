@@ -25,6 +25,7 @@
             pkgs.doxygen
             pkgs.graphviz
             pkgs.python3
+            pkgs.ruff
             pkgs.shfmt
             pkgs.shellcheck
           ];

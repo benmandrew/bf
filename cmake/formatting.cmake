@@ -18,6 +18,11 @@ if(CLANG_FORMAT)
         COMMAND ${CLANG_FORMAT} --dry-run -Werror -i ${ALL_SOURCE_FILES}
         COMMENT "Checking source code formatting"
     )
+    # fmt-ci is the target CI runs, so the script check has to hang off it
+    # too; without this, scripts/ would only be checked by a manual fmt.
+    if(NOT DOCKER_BUILD AND TARGET fmt-scripts-ci)
+        add_dependencies(fmt-ci fmt-scripts-ci)
+    endif()
 else()
     message(WARNING "clang-format not found, formatting targets will not be available")
 endif()

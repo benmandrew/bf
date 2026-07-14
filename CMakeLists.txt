@@ -6,6 +6,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export compile commands for too
 include(${CMAKE_SOURCE_DIR}/cmake/llvm.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/testing.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/scripts.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/formatting.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/linting.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/fuzzing.cmake)
