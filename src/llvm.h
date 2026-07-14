@@ -9,7 +9,7 @@
 
 /// Generate LLVM IR for a parsed Brainfuck program.
 /// @param program Parsed Brainfuck program.
-/// @param optimise Run LLVM optimisation passes (mem2reg, instcombine, etc.).
+/// @param optimise Run the LLVM `default<O2>` optimisation pipeline.
 /// @param label_blocks Append each basic block's Brainfuck source span to its
 ///                     name. Intended for CFG inspection; `optimise` merges and
 ///                     renames blocks, so the two are rarely useful together.

@@ -5,41 +5,44 @@
 ; CHECK: ; ModuleID = 'main'
 ; CHECK: source_filename = "main"
 
-; @dp is now an alloca inside main, not a global.
+; @dp is an alloca inside main, not a global. The tape is private so
+; whole-module passes can reason about it.
 ; CHECK-NOT: @dp = global
-; CHECK: @data = global [65536 x i8] zeroinitializer
+; CHECK: @data = private global [65536 x i8] zeroinitializer
 
-; CHECK: declare i32 @putchar(i32)
+; putchar is declared pure w.r.t. the tape (only inaccessible memory),
+; so loads/stores to @data optimise across output calls.
+; CHECK: declare i32 @putchar(i32) #[[ATTR:[0-9]+]]
 
 ; CHECK: define i32 @main() {
 ; CHECK: entry:
-; CHECK: %dp = alloca i32, align 4
-; CHECK: store i32 0, ptr %dp, align 4
+; CHECK: %dp = alloca i64, align 8
+; CHECK: store i64 0, ptr %dp
 
 ; First, build up to 'H' (ASCII 72)
-; CHECK: %[[DP1:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR1:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP1]]
+; CHECK: %[[DP1:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR1:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP1]]
 ; CHECK: %[[VAL1:.*]] = load i8, ptr %[[PTR1]], align 1
 ; CHECK: %[[ADD1:.*]] = add i8 %[[VAL1]], 72
 ; CHECK: store i8 %[[ADD1]], ptr %[[PTR1]], align 1
 
 ; Output 'H' with putchar
-; CHECK: %[[DP2:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR2:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP2]]
+; CHECK: %[[DP2:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR2:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP2]]
 ; CHECK: %[[VAL2:.*]] = load i8, ptr %[[PTR2]], align 1
 ; CHECK: %[[EXT1:.*]] = zext i8 %[[VAL2]] to i32
 ; CHECK: %[[CALL1:.*]] = call i32 @putchar(i32 %[[EXT1]])
 
 ; Add 33 more to get to 'i' (72 + 33 = 105)
-; CHECK: %[[DP3:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR3:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP3]]
+; CHECK: %[[DP3:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR3:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP3]]
 ; CHECK: %[[VAL3:.*]] = load i8, ptr %[[PTR3]], align 1
 ; CHECK: %[[ADD2:.*]] = add i8 %[[VAL3]], 33
 ; CHECK: store i8 %[[ADD2]], ptr %[[PTR3]], align 1
 
 ; Output 'i' with putchar
-; CHECK: %[[DP4:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR4:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP4]]
+; CHECK: %[[DP4:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR4:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP4]]
 ; CHECK: %[[VAL4:.*]] = load i8, ptr %[[PTR4]], align 1
 ; CHECK: %[[EXT2:.*]] = zext i8 %[[VAL4]] to i32
 ; CHECK: %[[CALL2:.*]] = call i32 @putchar(i32 %[[EXT2]])
@@ -47,3 +50,5 @@
 ; Return statement
 ; CHECK: ret i32 0
 ; CHECK: }
+
+; CHECK: attributes #[[ATTR]] = { memory(inaccessiblemem: readwrite) }

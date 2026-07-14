@@ -3,42 +3,42 @@
 ; CHECK: ; ModuleID = 'main'
 ; CHECK: source_filename = "main"
 
-; @dp is now an alloca inside main, not a global.
+; @dp is an alloca inside main, not a global; the tape is private.
 ; CHECK-NOT: @dp = global
-; CHECK: @data = global [65536 x i8] zeroinitializer
+; CHECK: @data = private global [65536 x i8] zeroinitializer
 
 ; CHECK: define i32 @main() {
 ; CHECK: entry:
-; CHECK: %dp = alloca i32, align 4
-; CHECK: store i32 0, ptr %dp, align 4
+; CHECK: %dp = alloca i64, align 8
+; CHECK: store i64 0, ptr %dp
 
 ; First increment operation (++)
-; CHECK: %[[DP1:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR1:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP1]]
+; CHECK: %[[DP1:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR1:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP1]]
 ; CHECK: %[[VAL1:.*]] = load i8, ptr %[[PTR1]], align 1
 ; CHECK: %[[ADD1:.*]] = add i8 %[[VAL1]], 2
 ; CHECK: store i8 %[[ADD1]], ptr %[[PTR1]], align 1
 
-; Move right operation (>)
-; CHECK: %[[DP2:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[RIGHT:.*]] = add i32 %[[DP2]], 1
-; CHECK: store i32 %[[RIGHT]], ptr %dp, align 4
+; Move right operation (>); pointer arithmetic carries nsw.
+; CHECK: %[[DP2:.*]] = load i64, ptr %dp
+; CHECK: %[[RIGHT:.*]] = add nsw i64 %[[DP2]], 1
+; CHECK: store i64 %[[RIGHT]], ptr %dp
 
 ; Decrement operation (--)
-; CHECK: %[[DP3:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR2:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP3]]
+; CHECK: %[[DP3:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR2:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP3]]
 ; CHECK: %[[VAL2:.*]] = load i8, ptr %[[PTR2]], align 1
 ; CHECK: %[[SUB:.*]] = sub i8 %[[VAL2]], 2
 ; CHECK: store i8 %[[SUB]], ptr %[[PTR2]], align 1
 
-; Move left operation (<)
-; CHECK: %[[DP4:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[LEFT:.*]] = sub i32 %[[DP4]], 1
-; CHECK: store i32 %[[LEFT]], ptr %dp, align 4
+; Move left operation (<); pointer arithmetic carries nsw.
+; CHECK: %[[DP4:.*]] = load i64, ptr %dp
+; CHECK: %[[LEFT:.*]] = sub nsw i64 %[[DP4]], 1
+; CHECK: store i64 %[[LEFT]], ptr %dp
 
 ; Final increment operation (++)
-; CHECK: %[[DP5:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR3:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP5]]
+; CHECK: %[[DP5:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR3:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP5]]
 ; CHECK: %[[VAL3:.*]] = load i8, ptr %[[PTR3]], align 1
 ; CHECK: %[[ADD2:.*]] = add i8 %[[VAL3]], 2
 ; CHECK: store i8 %[[ADD2]], ptr %[[PTR3]], align 1

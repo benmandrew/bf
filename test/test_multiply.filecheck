@@ -7,35 +7,36 @@
 ; CHECK: ; ModuleID = 'main'
 ; CHECK: source_filename = "main"
 
-; @dp is now an alloca inside main, not a global.
+; @dp is an alloca inside main, not a global; the tape is private.
 ; CHECK-NOT: @dp = global
-; CHECK: @data = global [65536 x i8] zeroinitializer
+; CHECK: @data = private global [65536 x i8] zeroinitializer
 
 ; CHECK: define i32 @main() {
 ; CHECK: entry:
-; CHECK: %dp = alloca i32, align 4
-; CHECK: store i32 0, ptr %dp, align 4
+; CHECK: %dp = alloca i64, align 8
+; CHECK: store i64 0, ptr %dp
 
-; > (move right)
-; CHECK: %[[DP1:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[RIGHT:.*]] = add i32 %[[DP1]], 1
-; CHECK: store i32 %[[RIGHT]], ptr %dp, align 4
+; > (move right); the pointer bump carries nsw so the index stays a clean
+; sign-extension-free i64.
+; CHECK: %[[DP1:.*]] = load i64, ptr %dp
+; CHECK: %[[RIGHT:.*]] = add nsw i64 %[[DP1]], 1
+; CHECK: store i64 %[[RIGHT]], ptr %dp
 
 ; +++++ (set cell[1] = 5)
-; CHECK: %[[DP2:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR1:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP2]]
+; CHECK: %[[DP2:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR1:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP2]]
 ; CHECK: %[[VAL1:.*]] = load i8, ptr %[[PTR1]], align 1
 ; CHECK: %[[ADD:.*]] = add i8 %[[VAL1]], 5
 ; CHECK: store i8 %[[ADD]], ptr %[[PTR1]], align 1
 
 ; CMD_MULTIPLY {offset=-1, factor=1}: load counter (cell[1]),
 ; compute cell[0] += counter * 1, zero cell[1].
-; CHECK: %[[DP3:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[CPTR:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP3]]
+; CHECK: %[[DP3:.*]] = load i64, ptr %dp
+; CHECK: %[[CPTR:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP3]]
 ; CHECK: %[[COUNTER:.*]] = load i8, ptr %[[CPTR]], align 1
-; CHECK: %[[DP4:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[TIDX:.*]] = add i32 %[[DP4]], -1
-; CHECK: %[[TPTR:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[TIDX]]
+; CHECK: %[[DP4:.*]] = load i64, ptr %dp
+; CHECK: %[[TIDX:.*]] = add nsw i64 %[[DP4]], -1
+; CHECK: %[[TPTR:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[TIDX]]
 ; CHECK: %[[TVAL:.*]] = load i8, ptr %[[TPTR]], align 1
 ; CHECK: %[[PROD:.*]] = mul i8 %[[COUNTER]], 1
 ; CHECK: %[[NEW:.*]] = add i8 %[[TVAL]], %[[PROD]]
