@@ -1,6 +1,9 @@
 #include "cfg_dot.h"
 
+#include <llvm/Analysis/BranchProbabilityInfo.h>
 #include <llvm/Analysis/CFGPrinter.h>
+#include <llvm/Analysis/LoopInfo.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/GraphWriter.h>
@@ -25,7 +28,21 @@ extern "C" void emit_cfg_dot(LLVMModuleRef module, bool include_instructions) {
         for (llvm::Function &f : *m) {
                 if (f.isDeclaration())
                         continue;
-                llvm::DOTFuncInfo cfg_info(&f);
+                // WriteGraph's getEdgeAttributes dereferences
+                // DOTFuncInfo::getBPI() to form an edge tooltip. LLVM 19
+                // (the Debian runtime image) does this before its
+                // showEdgeWeights() guard, so a null BPI crashes on any
+                // branch; LLVM 21+ guards first. Build a real one so both
+                // are safe -- it is unused where the guard fires.
+                llvm::DominatorTree dt(f);
+                llvm::LoopInfo li(dt);
+                llvm::BranchProbabilityInfo bpi(f, li);
+                llvm::DOTFuncInfo cfg_info(&f, /*BFI=*/nullptr, &bpi,
+                                           /*MaxFreq=*/0);
+                // Draw no probability labels: keeps the graph themeable and
+                // the output identical to opt -passes=dot-cfg[-only].
+                cfg_info.setEdgeWeights(false);
+                cfg_info.setRawEdgeWeights(false);
                 llvm::WriteGraph(llvm::outs(), &cfg_info,
                                  /*ShortNames=*/!include_instructions);
         }

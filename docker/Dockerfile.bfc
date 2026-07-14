@@ -22,8 +22,16 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o build/server src/server.go
 FROM debian:trixie-slim
 WORKDIR /app
 
+# The /cfg endpoint renders graphs with bfc -> highlight.py -> dot, so the
+# runtime needs Graphviz and python3 (highlight.py is stdlib-only, no pip).
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+	   graphviz python3 \
+	&& rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /build/build/server /app/server
 COPY --from=builder /build/build/bfc /app/bfc
+COPY ./scripts/highlight.py /app/highlight.py
 
 EXPOSE 8000
-ENTRYPOINT [ "/app/server", "/app/bfc" ]
+ENTRYPOINT [ "/app/server", "/app/bfc", "/app/highlight.py" ]
