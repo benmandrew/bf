@@ -2,15 +2,14 @@
 #
 # Render the control flow graph of a Brainfuck program.
 #
-# Pipeline: bfc --label-blocks -> opt -passes=dot-cfg[-only] -> dot
+# Pipeline: bfc --emit-cfg-dot -> highlight.py -> dot
 #
-# LLVM's CFG printer enables heat colours by default, which stamp a
-# per-node colour, fillcolor and fontname inline on every node. Those
-# inline attributes take precedence over dot's -N/-E/-G defaults, so the
-# graph cannot be themed while they are on. They also encode nothing
-# here: heat is derived from block frequency, and without PGO profile
-# data every block falls back to the same default weight. Hence
-# -cfg-heat-colors=false; highlight.py then does the styling.
+# bfc emits the CFG dot itself (see src/cfg_dot.cpp), so there is no
+# separate `opt` stage and no LLVM-version skew to guard against: the
+# graph always comes from the same toolchain bfc was built with. bfc emits
+# with heat colours off, so highlight.py is free to theme the graph;
+# without profile data heat encodes nothing but would stamp inline colours
+# that override dot's -N/-E/-G defaults.
 
 # Paths are taken relative to the working directory, not the script, so
 # there is deliberately no cd to the repository root here: it would
@@ -27,7 +26,7 @@ Usage: scripts/cfg.sh [-b BUILD_DIR] [-o OUTPUT] [-i] [-O] INPUT.b
   -o OUTPUT     Output image; format is taken from the extension,
                 either .png or .svg (default: cfg.png)
   -i            Include each block's LLVM instructions in the graph
-                (-passes=dot-cfg rather than dot-cfg-only)
+                (bfc --cfg-instructions)
   -O            Run bfc with -O. Off by default: simplifycfg merges and
                 renames blocks, degrading the source-span labels.
   -h            Show this help message
@@ -37,13 +36,13 @@ EOF
 BUILD_DIR=build
 OUTPUT=cfg.png
 OPTIMISE=()
-PASS=dot-cfg-only
+INSTRUCTIONS=()
 
 while getopts "b:o:iOh" opt; do
     case "${opt}" in
         b) BUILD_DIR="${OPTARG}" ;;
         o) OUTPUT="${OPTARG}" ;;
-        i) PASS=dot-cfg ;;
+        i) INSTRUCTIONS=(--cfg-instructions) ;;
         O) OPTIMISE=(-O) ;;
         h)
             usage
@@ -82,7 +81,7 @@ for f in "${BFC}" "${INPUT}"; do
     fi
 done
 
-for tool in opt dot python3; do
+for tool in dot python3; do
     if ! command -v "${tool}" >/dev/null 2>&1; then
         echo "cfg.sh: ${tool} not on PATH; run inside 'nix develop'" >&2
         exit 1
@@ -95,58 +94,14 @@ if [ ! -f "${HIGHLIGHT}" ]; then
     exit 1
 fi
 
-# bfc statically links LLVM, so its version is not visible via ldd. Take
-# it from the LLVMConfig.cmake that cmake resolved at configure time.
-CACHE="${BUILD_DIR}/CMakeCache.txt"
-if [ ! -f "${CACHE}" ]; then
-    echo "cfg.sh: no CMakeCache.txt in ${BUILD_DIR}; configure it first" >&2
-    exit 1
-fi
-
-LLVM_DIR=$(sed -n 's/^LLVM_DIR:PATH=//p' "${CACHE}")
-if [ -z "${LLVM_DIR}" ] || [ ! -f "${LLVM_DIR}/LLVMConfig.cmake" ]; then
-    echo "cfg.sh: cannot resolve LLVM_DIR from ${CACHE}" >&2
-    exit 1
-fi
-
-BFC_MAJOR=$(sed -n 's/^set(LLVM_VERSION_MAJOR \([0-9]*\)).*/\1/p' \
-    "${LLVM_DIR}/LLVMConfig.cmake")
-OPT_MAJOR=$(opt --version | sed -n 's/.*LLVM version \([0-9]*\)\..*/\1/p')
-
-# A mismatch is not always a hard error: an older opt may parse bfc's
-# output with only a warning and still emit a plausible-looking graph, so
-# fail loudly rather than let a silently wrong CFG through.
-if [ "${BFC_MAJOR}" != "${OPT_MAJOR}" ]; then
-    cat >&2 <<EOF
-cfg.sh: LLVM version mismatch.
-  bfc was built against LLVM ${BFC_MAJOR} (${LLVM_DIR})
-  opt on PATH is LLVM ${OPT_MAJOR} ($(command -v opt))
-A mismatched opt may reject bfc's output, or quietly emit a misleading
-graph. Run inside 'nix develop' so both come from the same toolchain.
-EOF
-    exit 1
-fi
-
 WORK=$(mktemp -d)
 trap 'rm -rf "${WORK}"' EXIT
 
-"${BFC}" --label-blocks "${OPTIMISE[@]}" "${INPUT}" >"${WORK}/cfg.ll"
-
-# opt writes .<function>.dot into the working directory. bfc emits a
-# single function, main, so the name is fixed. opt announces that write
-# on stderr; drop the announcement but keep anything else it says.
-if ! (cd "${WORK}" && opt "-passes=${PASS}" -cfg-heat-colors=false \
-    -disable-output cfg.ll >/dev/null 2>"${WORK}/opt.err"); then
-    cat "${WORK}/opt.err" >&2
-    exit 1
-fi
-grep -v "^Writing '\..*\.dot'\.\.\.$" "${WORK}/opt.err" >&2 || true
-
-DOT="${WORK}/.main.dot"
-if [ ! -f "${DOT}" ]; then
-    echo "cfg.sh: opt did not produce ${DOT}" >&2
-    exit 1
-fi
+DOT="${WORK}/cfg.dot"
+# The [@]+ guards let empty arrays expand to nothing under `set -u`, which
+# the macOS system bash (3.2) needs; a bare "${arr[@]}" errors there.
+"${BFC}" --emit-cfg-dot ${INSTRUCTIONS[@]+"${INSTRUCTIONS[@]}"} \
+    --label-blocks ${OPTIMISE[@]+"${OPTIMISE[@]}"} "${INPUT}" >"${DOT}"
 
 # Theme the graph and syntax-highlight the IR. Doing this in Python
 # rather than sed is what buys per-token colour: record labels cannot
@@ -158,6 +113,7 @@ if [ "${FORMAT}" = png ]; then
     DOTFLAGS=(-Gdpi=140)
 fi
 
-dot "-T${FORMAT}" "${DOTFLAGS[@]}" "${WORK}/themed.dot" -o "${OUTPUT}"
+dot "-T${FORMAT}" ${DOTFLAGS[@]+"${DOTFLAGS[@]}"} "${WORK}/themed.dot" \
+    -o "${OUTPUT}"
 
 echo "cfg.sh: wrote ${OUTPUT}"

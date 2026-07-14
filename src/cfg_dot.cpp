@@ -16,8 +16,9 @@
 // off, matching the -cfg-heat-colors=false that scripts/cfg.sh passed opt:
 // heat encodes block frequency, and without PGO every block falls back to
 // the same weight while still stamping inline colours that defeat theming.
-// ShortNames=true selects dot-cfg-only (block labels, no instructions).
-extern "C" void emit_cfg_dot(LLVMModuleRef module) {
+// WriteGraph's ShortNames selects between the two printers: true is
+// dot-cfg-only (block labels), false is dot-cfg (labels plus instructions).
+extern "C" void emit_cfg_dot(LLVMModuleRef module, bool include_instructions) {
         llvm::Module *m = llvm::unwrap(module);
         // bfc emits a single defined function, main; putchar/getchar and
         // friends are declarations and carry no CFG to print.
@@ -26,7 +27,7 @@ extern "C" void emit_cfg_dot(LLVMModuleRef module) {
                         continue;
                 llvm::DOTFuncInfo cfg_info(&f);
                 llvm::WriteGraph(llvm::outs(), &cfg_info,
-                                 /*ShortNames=*/true);
+                                 /*ShortNames=*/!include_instructions);
         }
         llvm::outs().flush();
 }
