@@ -1,0 +1,32 @@
+#include "cfg_dot.h"
+
+#include <llvm/Analysis/CFGPrinter.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Support/GraphWriter.h>
+#include <llvm/Support/raw_ostream.h>
+
+// Fold the `opt -passes=dot-cfg-only` stage into bfc itself. The dot-cfg
+// printer is a Function pass with no llvm-c binding, and as a pass it
+// writes .<function>.dot into the working directory rather than a stream;
+// calling WriteGraph directly here writes to stdout instead, which is both
+// what the --emit-cfg-dot flag promises and safe to run concurrently.
+//
+// DOTFuncInfo constructed without profile data defaults to heat colours
+// off, matching the -cfg-heat-colors=false that scripts/cfg.sh passed opt:
+// heat encodes block frequency, and without PGO every block falls back to
+// the same weight while still stamping inline colours that defeat theming.
+// ShortNames=true selects dot-cfg-only (block labels, no instructions).
+extern "C" void emit_cfg_dot(LLVMModuleRef module) {
+        llvm::Module *m = llvm::unwrap(module);
+        // bfc emits a single defined function, main; putchar/getchar and
+        // friends are declarations and carry no CFG to print.
+        for (llvm::Function &f : *m) {
+                if (f.isDeclaration())
+                        continue;
+                llvm::DOTFuncInfo cfg_info(&f);
+                llvm::WriteGraph(llvm::outs(), &cfg_info,
+                                 /*ShortNames=*/true);
+        }
+        llvm::outs().flush();
+}

@@ -17,12 +17,13 @@
         # (overrideAttrs does not reach it).
         cpplint = pkgs.cpplint.overridePythonAttrs (_: { doCheck = false; });
       in {
-        # Build with LLVM 22's wrapped clang stdenv. bfc/bfi are compiled
-        # and linked by the stdenv compiler, so its version fixes the
-        # sanitizer runtime they pick up: LLVM 21's ASan hangs at startup
-        # on macOS 26 (spinning in get_dyld_hdr during shadow-memory init),
-        # whereas 22's runs. clang-tools still provides clang-format/tidy;
-        # the compiler now comes from the stdenv, so clang-unwrapped is gone.
+        # Build with LLVM 22's wrapped clang stdenv, not clang-unwrapped.
+        # bfc/bfi pick up their sanitizer runtime from whatever compiler
+        # links them, and LLVM 21's ASan hangs at startup on macOS 26
+        # (spinning in get_dyld_hdr during shadow-memory init) whereas 22's
+        # runs. The wrapper is also what supplies the libc++ include and
+        # runtime paths that cfg_dot.cpp, the one C++ TU, needs to compile
+        # and link. clang-tools still provides clang-format/tidy.
         devShells.default = (pkgs.mkShell.override { stdenv = llvm.stdenv; }) {
           packages = [
             pkgs.cmake
