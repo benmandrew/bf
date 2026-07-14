@@ -84,6 +84,30 @@ p:not(.post-meta), h2, blockquote, pre, ol, ul, div[class^="language-"] {
   height: 30em;
 }
 
+.pane#cfgPane {
+  flex: 1 1 66%;
+  height: 30em;
+}
+
+.cfg-view {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: #ffffff;
+  cursor: grab;
+  touch-action: none;
+}
+
+.cfg-view:active {
+  cursor: grabbing;
+}
+
+.cfg-view svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .pane header {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.02);
