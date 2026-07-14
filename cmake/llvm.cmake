@@ -43,6 +43,10 @@ else()
     set(CMAKE_C_STANDARD_REQUIRED ON)
     set(CMAKE_C_EXTENSIONS ON)  # For gnu17
 
+    # cfg_dot.cpp uses the LLVM C++ API; LLVM 16+ headers require C++17.
+    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
     if(NOT CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE Debug)
     endif()
@@ -68,7 +72,8 @@ else()
         link_directories(${LLVM_LIBRARY_DIRS})
     endif()
 
-    llvm_map_components_to_libnames(llvm_libs support core irreader passes)
+    llvm_map_components_to_libnames(llvm_libs support core irreader passes
+        analysis)
 
     # Use an OBJECT library for shared sources to avoid flag leakage
     set(LIB_SOURCES
@@ -76,5 +81,6 @@ else()
         src/ir.c
         src/read.c
         src/llvm.c
+        src/cfg_dot.cpp
     )
 endif()

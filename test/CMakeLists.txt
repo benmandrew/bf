@@ -58,6 +58,10 @@ find_program(FILECHECK NAMES FileCheck llvm-filecheck filecheck PATHS /usr/bin /
 if(FILECHECK AND LLVM_AVAILABLE)
     message(STATUS "Found FileCheck at: ${FILECHECK}")
     file(GLOB FILECHECK_TESTS "*.filecheck")
+    # The generic loop below runs `bfc <input>` with no flags. The CFG test
+    # needs `--emit-cfg-dot`, so it is excluded here and handled explicitly.
+    list(REMOVE_ITEM FILECHECK_TESTS
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_cfg_dot.filecheck")
     if(FILECHECK_TESTS)
         add_custom_target(filecheck
             COMMAND echo "Running all FileCheck tests..."
@@ -80,6 +84,15 @@ if(FILECHECK AND LLVM_AVAILABLE)
                 message(WARNING "Input file not found for FileCheck test: ${input_file}")
             endif()
         endforeach()
+        # CFG dot output, produced with the --emit-cfg-dot flag.
+        add_custom_command(TARGET filecheck POST_BUILD
+            COMMAND echo "Running FileCheck test: cfg_dot"
+            COMMAND ${CMAKE_BINARY_DIR}/bfc --emit-cfg-dot --label-blocks
+                ${CMAKE_SOURCE_DIR}/test/res/fib.b
+                | ${FILECHECK} ${CMAKE_SOURCE_DIR}/test/test_cfg_dot.filecheck
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            VERBATIM
+        )
     else()
         message(STATUS "No .filecheck files found in test/ directory")
         add_custom_target(filecheck

@@ -1,0 +1,19 @@
+; RUN: bfc --emit-cfg-dot --label-blocks res/fib.b | FileCheck test_cfg_dot.filecheck
+;
+; The control-flow graph of fib.b: an entry block that conditionally
+; branches into a loop body, which loops back to itself or falls through to
+; a terminal loop-end block. Node identifiers are pointer values, so they
+; are matched with regex ({{...}}) rather than pinned.
+
+; CHECK: digraph "CFG for 'main' function" {
+; CHECK: label="CFG for 'main' function";
+
+; The entry block carries its Brainfuck source span and the true/false
+; ports the conditional branch edges attach to.
+; CHECK: [shape=record,label="{entry ,\>+\>+\<\<|{<s0>T|<s1>F}}"];
+; CHECK: Node{{0x[0-9a-f]+}}:s0 -> Node{{0x[0-9a-f]+}};
+; CHECK: Node{{0x[0-9a-f]+}}:s1 -> Node{{0x[0-9a-f]+}};
+
+; The loop body branches back to itself; the loop end is a leaf.
+; CHECK: [shape=record,label="{loop6.body {{.*}}|{<s0>T|<s1>F}}"];
+; CHECK: [shape=record,label="{loop6.end \>\>.}"];

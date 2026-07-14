@@ -2,11 +2,13 @@
 
 A compiler frontend for the [Brainf*ck language](https://en.wikipedia.org/wiki/Brainfuck) that outputs code in LLVM Intermediate Representation (IR), which can then be compiled to any desired target architecture with `clang`.
 
-You can interact with it online [here](https://benmandrew.com/articles/compiler-frontend), or in a self-hosted web interface accessed at [`http://localhost:8080`](http://localhost:8080) after running
+You can interact with it online [here](https://benmandrew.com/articles/compiler-frontend), or in a self-hosted web interface — which shows the Brainf*ck source, the compiled LLVM IR, and its control flow graph side by side — accessed at [`http://localhost:8080`](http://localhost:8080) after running
 
 ```bash
 $ docker compose up
 ```
+
+The `bfc` backend image is built with nix rather than a Dockerfile, so its CFG renderer — `bfc`, Graphviz and Python — is the same pinned toolchain as the dev shell (Debian's older Graphviz cannot draw the instruction-level blocks). `docker compose` pulls the published image; to build it locally instead, run `nix build .#bfcImage && docker load < result` first.
 
 The input validation and parsing functionality is formally verified to be memory safe for inputs up to thirteen commands long. Details are in [MODELCHECKING.md](MODELCHECKING.md).
 
@@ -76,7 +78,7 @@ $ scripts/cfg.sh -o fib_cfg.svg test/res/fib.b  # extension picks the format
 $ scripts/cfg.sh -i test/res/fib.b              # with each block's IR, highlighted
 ```
 
-The script chains `bfc`, `opt` and `dot`, theming the graph and syntax-highlighting the IR on the way through; `scripts/cfg.sh -h` lists the remaining flags, and the two scripts document how the theming works and why the highlighting follows [Prism](https://prismjs.com/)'s LLVM grammar. It refuses to run when `opt` does not match the LLVM version `bfc` was built against, since a mismatched `opt` can quietly emit a misleading graph.
+`bfc --emit-cfg-dot` emits the graph as Graphviz dot directly — `-i` adds `--cfg-instructions` for the instruction-level view — so the script only chains `bfc` and `dot`, theming the graph and syntax-highlighting the IR on the way through with `highlight.py`. `scripts/cfg.sh -h` lists the remaining flags, and both scripts document how the theming works and why the highlighting follows [Prism](https://prismjs.com/)'s LLVM grammar. Because `bfc` produces the dot with the same LLVM it links against, there is no separate `opt` and no version skew to guard against.
 
 `-O` is off by default, because the `simplifycfg` pass merges and renames blocks, degrading the labels until the graph no longer mirrors the source.
 

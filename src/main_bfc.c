@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "cfg_dot.h"
 #include "ir.h"
 #include "llvm.h"
 #include "read.h"
@@ -16,20 +17,29 @@ void print_usage(const char *program_name) {
         printf(
             "  -L, --label-blocks   Append Brainfuck source spans to basic\n");
         printf("                       block names (for CFG inspection)\n");
+        printf(
+            "  -C, --emit-cfg-dot   Emit the control-flow graph as Graphviz\n");
+        printf("                       dot instead of LLVM IR\n");
+        printf("      --cfg-instructions   Include each block's LLVM\n");
+        printf("                       instructions in the --emit-cfg-dot "
+               "graph\n");
         printf("  -h, --help           Show this help message\n");
         printf("\nArguments:\n");
         printf("  input_file           Brainfuck source file to compile\n");
 }
 
-static struct option long_options[] = {{"optimise", no_argument, 0, 'O'},
-                                       {"label-blocks", no_argument, 0, 'L'},
-                                       {"help", no_argument, 0, 'h'},
-                                       {0, 0, 0, 0}};
+static struct option long_options[] = {
+    {"optimise", no_argument, 0, 'O'},
+    {"label-blocks", no_argument, 0, 'L'},
+    {"emit-cfg-dot", no_argument, 0, 'C'},
+    {"cfg-instructions", no_argument, 0, 'I'},
+    {"help", no_argument, 0, 'h'},
+    {0, 0, 0, 0}};
 
 int parse_options(int argc, char **argv, bool *optimise, bool *label_blocks,
-                  char **program) {
+                  bool *emit_cfg, bool *cfg_instructions, char **program) {
         int opt;
-        while ((opt = getopt_long(argc, argv, "OLh", long_options, NULL)) !=
+        while ((opt = getopt_long(argc, argv, "OLCh", long_options, NULL)) !=
                -1) {
                 switch (opt) {
                 case 'O':
@@ -37,6 +47,12 @@ int parse_options(int argc, char **argv, bool *optimise, bool *label_blocks,
                         break;
                 case 'L':
                         *label_blocks = true;
+                        break;
+                case 'C':
+                        *emit_cfg = true;
+                        break;
+                case 'I':
+                        *cfg_instructions = true;
                         break;
                 case 'h':
                         print_usage(argv[0]);
@@ -75,9 +91,11 @@ int parse_options(int argc, char **argv, bool *optimise, bool *label_blocks,
 int main(int argc, char **argv) {
         bool optimise = false;
         bool label_blocks = false;
+        bool emit_cfg = false;
+        bool cfg_instructions = false;
         char *program_str = NULL;
-        if (parse_options(argc, argv, &optimise, &label_blocks, &program_str) !=
-            0) {
+        if (parse_options(argc, argv, &optimise, &label_blocks, &emit_cfg,
+                          &cfg_instructions, &program_str) != 0) {
                 return 1;
         }
         struct program parsed_program = string_to_program(program_str);
@@ -85,10 +103,14 @@ int main(int argc, char **argv) {
         optimise_program(&parsed_program);
         LLVMModuleRef module =
             generate(&parsed_program, optimise, label_blocks);
-        char *err = NULL;
-        LLVMPrintModuleToFile(module, "/dev/stdout", &err);
-        if (err)
-                LLVMDisposeMessage(err);
+        if (emit_cfg) {
+                emit_cfg_dot(module, cfg_instructions);
+        } else {
+                char *err = NULL;
+                LLVMPrintModuleToFile(module, "/dev/stdout", &err);
+                if (err)
+                        LLVMDisposeMessage(err);
+        }
         dispose_module(module);
         free(parsed_program.cmds);
         return 0;

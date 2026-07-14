@@ -213,6 +213,21 @@ def convert(line):
     return "%s%s [label=%s];\n" % (indent, name, build_label(fields))
 
 
+def colour_edge(line, port, colour):
+    """Colour a `Node:sN -> Node` branch edge, merging into any existing
+    attribute list. Some LLVM versions attach edge attributes (e.g. a
+    probability tooltip), so the colour cannot assume a bare edge."""
+
+    def repl(m):
+        edge, attrs = m.group(1), m.group(2)
+        if attrs:
+            return '%s [color="%s", %s];' % (edge, colour, attrs[1:-1].strip())
+        return '%s [color="%s"];' % (edge, colour)
+
+    pattern = r"(%s -> Node0x[0-9a-f]+)\s*(\[[^\]]*\])?;" % re.escape(port)
+    return re.sub(pattern, repl, line)
+
+
 def main():
     for line in sys.stdin:
         converted = convert(line)
@@ -221,8 +236,8 @@ def main():
             continue
         # Colour branch edges by port: :s0 is the true successor, :s1 the
         # false one, which is what makes a loop back-edge legible.
-        line = re.sub(r"(:s0 -> Node0x[0-9a-f]+);", r'\1 [color="#1a7f37"];', line)
-        line = re.sub(r"(:s1 -> Node0x[0-9a-f]+);", r'\1 [color="#cf222e"];', line)
+        line = colour_edge(line, ":s0", "#1a7f37")
+        line = colour_edge(line, ":s1", "#cf222e")
         sys.stdout.write(line)
         if line.lstrip().startswith("digraph "):
             sys.stdout.write(PREAMBLE + "\n")
