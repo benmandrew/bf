@@ -42,6 +42,14 @@ build/bfi test/res/helloworld.b
 
 `bfc` also reads from stdin when no file argument is given.
 
+```bash
+# Graph the CFG (see README "Visualising the Control Flow Graph")
+build/bfc --label-blocks test/res/fib.b > fib.ll
+opt -passes=dot-cfg-only -disable-output fib.ll && dot -Tpng .main.dot -o cfg.png
+```
+
+`--label-blocks` appends each block's Brainfuck source span to its name. Use it without `-O`, since `simplifycfg` merges and renames blocks. `opt` must match the LLVM version `bfc` links against.
+
 ## Common Build Targets
 
 ```bash

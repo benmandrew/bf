@@ -66,6 +66,22 @@ $ bfi test/res/helloworld.b
 Hello, World!
 ```
 
+### Visualising the Control Flow Graph
+
+Basic blocks are named after the loop that creates them (`loop6.body`, `loop6.end`). Passing `--label-blocks` additionally appends the span of Brainf*ck source each block covers, which is enough to read a *control flow graph* (CFG) back against the original program:
+
+```bash
+$ bfc --label-blocks test/res/fib.b > fib.ll
+$ opt -passes=dot-cfg-only -disable-output fib.ll   # writes .main.dot
+$ dot -Tpng .main.dot -o fib_cfg.png
+```
+
+Both `opt` and `dot` are in the Nix devShell. Use `-passes=dot-cfg` instead of `dot-cfg-only` to include each block's instructions in the graph.
+
+Two caveats. `opt` must match the LLVM version `bfc` links against, since older releases reject its opaque-pointer output. And `--label-blocks` is best left off `-O`: the `simplifycfg` pass merges and renames blocks, so the labels degrade and the graph no longer mirrors the source.
+
+Loops that `optimise_program()` rewrites into `CMD_CLEAR` or `CMD_MULTIPLY` lower to straight-line code and so contribute no blocks. They appear inside a label as `[-]` and `[mul]` respectively. This rewriting is unconditional, which is why `helloworld.b` graphs as a single block.
+
 ### Formatting and Linting
 
 ```bash

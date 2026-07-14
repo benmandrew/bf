@@ -12,23 +12,31 @@
 void print_usage(const char *program_name) {
         printf("Usage: %s [OPTIONS] <input_file>\n", program_name);
         printf("Options:\n");
-        printf("  -O, --optimise          Enable optimisations\n");
+        printf("  -O, --optimise       Enable optimisations\n");
+        printf(
+            "  -L, --label-blocks   Append Brainfuck source spans to basic\n");
+        printf("                       block names (for CFG inspection)\n");
         printf("  -h, --help           Show this help message\n");
         printf("\nArguments:\n");
         printf("  input_file           Brainfuck source file to compile\n");
 }
 
 static struct option long_options[] = {{"optimise", no_argument, 0, 'O'},
+                                       {"label-blocks", no_argument, 0, 'L'},
                                        {"help", no_argument, 0, 'h'},
                                        {0, 0, 0, 0}};
 
-int parse_options(int argc, char **argv, bool *optimise, char **program) {
+int parse_options(int argc, char **argv, bool *optimise, bool *label_blocks,
+                  char **program) {
         int opt;
-        while ((opt = getopt_long(argc, argv, "Oh", long_options, NULL)) !=
+        while ((opt = getopt_long(argc, argv, "OLh", long_options, NULL)) !=
                -1) {
                 switch (opt) {
                 case 'O':
                         *optimise = true;
+                        break;
+                case 'L':
+                        *label_blocks = true;
                         break;
                 case 'h':
                         print_usage(argv[0]);
@@ -66,14 +74,17 @@ int parse_options(int argc, char **argv, bool *optimise, char **program) {
 
 int main(int argc, char **argv) {
         bool optimise = false;
+        bool label_blocks = false;
         char *program_str = NULL;
-        if (parse_options(argc, argv, &optimise, &program_str) != 0) {
+        if (parse_options(argc, argv, &optimise, &label_blocks, &program_str) !=
+            0) {
                 return 1;
         }
         struct program parsed_program = string_to_program(program_str);
         free(program_str);
         optimise_program(&parsed_program);
-        LLVMModuleRef module = generate(&parsed_program, optimise);
+        LLVMModuleRef module =
+            generate(&parsed_program, optimise, label_blocks);
         char *err = NULL;
         LLVMPrintModuleToFile(module, "/dev/stdout", &err);
         if (err)

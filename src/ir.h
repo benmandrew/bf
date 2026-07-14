@@ -88,6 +88,18 @@ char cmd_type_to_char(enum cmd_type command_type);
 /// @return Heap-allocated source string; caller must free it.
 char *program_to_string(struct program *program);
 
+/// Render a command range as a bounded Brainfuck snippet for use in a label.
+/// Unlike program_to_string(), synthetic commands are rendered rather than
+/// skipped (CMD_CLEAR as `[-]`, CMD_MULTIPLY as `[mul]`), and output longer
+/// than `out_size` is truncated with a trailing `...`.
+/// @param program Parsed program.
+/// @param start First command index, inclusive.
+/// @param end One past the last command index.
+/// @param out Destination buffer, always NUL-terminated on return.
+/// @param out_size Size of `out` in bytes, including the terminator; min 4.
+void program_range_to_label(struct program *program, size_t start, size_t end,
+                            char *out, size_t out_size);
+
 /// Return whether a program contains any output commands.
 /// @param program Parsed program.
 /// @return 1 if output exists; otherwise 0.

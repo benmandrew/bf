@@ -1,6 +1,7 @@
 #include "ir.h"
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -218,6 +219,72 @@ char *program_to_string(struct program *program) {
         }
         out[program_str_len] = '\0';
         return out;
+}
+
+/// Append `text` to `out`, returning false if it does not fit.
+static bool label_append(char *out, size_t out_size, size_t *len,
+                         const char *text) {
+        for (size_t text_index = 0; text[text_index] != '\0'; text_index++) {
+                if (*len + 1 >= out_size) {
+                        return false;
+                }
+                out[(*len)++] = text[text_index];
+        }
+        return true;
+}
+
+void program_range_to_label(struct program *program, size_t start, size_t end,
+                            char *out, size_t out_size) {
+        assert(out_size >= 4);
+        size_t len = 0;
+        bool truncated = false;
+        for (size_t cmd_index = start; cmd_index < end && !truncated;
+             cmd_index++) {
+                struct cmd command = program->cmds[cmd_index];
+                char symbol[2] = {'\0', '\0'};
+                switch (command.type) {
+                case CMD_SIMPLE_INC:
+                case CMD_SIMPLE_DEC:
+                case CMD_SIMPLE_RIGHT:
+                case CMD_SIMPLE_LEFT:
+                case CMD_SIMPLE_OUTPUT:
+                case CMD_SIMPLE_INPUT:
+                        symbol[0] = cmd_type_to_char(command.type);
+                        for (size_t repeat_index = 0;
+                             repeat_index < command.value.simple_count;
+                             repeat_index++) {
+                                if (!label_append(out, out_size, &len,
+                                                  symbol)) {
+                                        truncated = true;
+                                        break;
+                                }
+                        }
+                        break;
+                case CMD_JUMP_FORWARD:
+                case CMD_JUMP_BACK:
+                        symbol[0] = cmd_type_to_char(command.type);
+                        truncated = !label_append(out, out_size, &len, symbol);
+                        break;
+                case CMD_CLEAR:
+                        truncated = !label_append(out, out_size, &len, "[-]");
+                        break;
+                case CMD_MULTIPLY:
+                        truncated = !label_append(out, out_size, &len, "[mul]");
+                        break;
+                default:
+                        fprintf(stderr, "Unrecognised cmd_type '%c'\n",
+                                command.type);
+                        exit(1);
+                }
+        }
+        if (truncated) {
+                // label_append only fails once len has reached out_size - 1, so
+                // rewinding by three always lands inside the written region.
+                len = out_size - 4;
+                memcpy(out + len, "...", 3);
+                len += 3;
+        }
+        out[len] = '\0';
 }
 
 char program_contains_output(struct program *program) {

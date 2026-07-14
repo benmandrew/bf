@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <llvm-c/Transforms/PassBuilder.h>
 
@@ -49,6 +50,13 @@ jump_stack_pop(struct llvm_jump_stack *jump_stack) {
         return jump_stack->stack[jump_stack->head];
 }
 
+/// Buffer size for the Brainfuck snippet appended to a block name, including
+/// the terminator.
+#define BF_LABEL_MAX (32)
+
+/// Buffer size for a full block name: structural prefix, space, snippet.
+#define BLOCK_NAME_MAX (BF_LABEL_MAX + 64)
+
 struct llvm_context {
         LLVMContextRef context;
         LLVMModuleRef module;
@@ -59,6 +67,10 @@ struct llvm_context {
         struct llvm_jump_stack js;
         struct llvm_function putchar;
         struct llvm_function getchar;
+        /// Append Brainfuck source spans to block names.
+        bool label_blocks;
+        /// Index of the first command in the block currently being built.
+        size_t block_start_cmd;
 };
 
 static LLVMTypeRef int32_type(struct llvm_context *ctx) {
@@ -87,8 +99,11 @@ void create_getchar_declaration(struct llvm_context *ctx) {
 }
 
 struct llvm_context create_module_preamble(struct program *program,
-                                           const char *name) {
+                                           const char *name,
+                                           bool label_blocks) {
         struct llvm_context ctx;
+        ctx.label_blocks = label_blocks;
+        ctx.block_start_cmd = 0;
         ctx.context = LLVMContextCreate();
         ctx.module = LLVMModuleCreateWithNameInContext(name, ctx.context);
         ctx.builder = LLVMCreateBuilderInContext(ctx.context);
@@ -225,17 +240,47 @@ void clear(struct llvm_context *ctx) {
                        data_ptr);
 }
 
-void left_bracket(struct llvm_context *ctx) {
+/// Close off the block under construction, which spans commands
+/// [block_start_cmd, end_cmd). When labelling is enabled, its Brainfuck source
+/// span is appended to the structural name assigned at creation.
+static void finish_block(struct llvm_context *ctx, struct program *program,
+                         size_t end_cmd) {
+        if (ctx->label_blocks) {
+                char bf[BF_LABEL_MAX];
+                program_range_to_label(program, ctx->block_start_cmd, end_cmd,
+                                       bf, sizeof(bf));
+                if (bf[0] != '\0') {
+                        LLVMValueRef block = LLVMBasicBlockAsValue(
+                            LLVMGetInsertBlock(ctx->builder));
+                        size_t prefix_len = 0;
+                        const char *prefix =
+                            LLVMGetValueName2(block, &prefix_len);
+                        char name[BLOCK_NAME_MAX];
+                        snprintf(name, sizeof(name), "%.*s %s", (int)prefix_len,
+                                 prefix, bf);
+                        LLVMSetValueName2(block, name, strlen(name));
+                }
+        }
+        ctx->block_start_cmd = end_cmd + 1;
+}
+
+void left_bracket(struct llvm_context *ctx, size_t cmd_index) {
         LLVMValueRef data_ptr = get_dataptr(ctx);
         LLVMValueRef current_value =
             LLVMBuildLoad2(ctx->builder, int8_type(ctx), data_ptr, "");
         LLVMValueRef condition =
             LLVMBuildICmp(ctx->builder, LLVMIntNE, current_value,
                           LLVMConstInt(int8_type(ctx), 0, 0), "");
+        // cmd_index is unique per loop, so these names never collide and LLVM
+        // never appends a disambiguating suffix.
+        char body_name[BLOCK_NAME_MAX];
+        char end_name[BLOCK_NAME_MAX];
+        snprintf(body_name, sizeof(body_name), "loop%zu.body", cmd_index);
+        snprintf(end_name, sizeof(end_name), "loop%zu.end", cmd_index);
         LLVMBasicBlockRef entry =
-            LLVMAppendBasicBlockInContext(ctx->context, ctx->main, "entry");
+            LLVMAppendBasicBlockInContext(ctx->context, ctx->main, body_name);
         LLVMBasicBlockRef exit =
-            LLVMAppendBasicBlockInContext(ctx->context, ctx->main, "exit");
+            LLVMAppendBasicBlockInContext(ctx->context, ctx->main, end_name);
         jump_stack_push(&ctx->js, entry, exit);
         LLVMBuildCondBr(ctx->builder, condition, entry, exit);
         LLVMPositionBuilderAtEnd(ctx->builder, entry);
@@ -253,8 +298,10 @@ void right_bracket(struct llvm_context *ctx) {
         LLVMPositionBuilderAtEnd(ctx->builder, pair.exit);
 }
 
-LLVMModuleRef generate(struct program *program, bool optimise) {
-        struct llvm_context ctx = create_module_preamble(program, "main");
+LLVMModuleRef generate(struct program *program, bool optimise,
+                       bool label_blocks) {
+        struct llvm_context ctx =
+            create_module_preamble(program, "main", label_blocks);
         create_main_function(&ctx);
         for (size_t cmd_index = 0; cmd_index < program->length; cmd_index++) {
                 struct cmd command = program->cmds[cmd_index];
@@ -286,9 +333,11 @@ LLVMModuleRef generate(struct program *program, bool optimise) {
                         }
                         break;
                 case CMD_JUMP_FORWARD:
-                        left_bracket(&ctx);
+                        finish_block(&ctx, program, cmd_index);
+                        left_bracket(&ctx, cmd_index);
                         break;
                 case CMD_JUMP_BACK:
+                        finish_block(&ctx, program, cmd_index);
                         right_bracket(&ctx);
                         break;
                 case CMD_CLEAR:
@@ -304,6 +353,7 @@ LLVMModuleRef generate(struct program *program, bool optimise) {
                         exit(1);
                 }
         }
+        finish_block(&ctx, program, program->length);
         LLVMBuildRet(ctx.builder, LLVMConstInt(int32_type(&ctx), 0, 0));
         LLVMDisposeBuilder(ctx.builder);
         if (optimise) {
