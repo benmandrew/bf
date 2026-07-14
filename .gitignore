@@ -79,5 +79,6 @@ cbmc_outputs/
 result
 result-*
 
-# python bytecode
+# Python bytecode, e.g. from importing scripts/highlight.py
 __pycache__/
+*.py[cod]
