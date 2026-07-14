@@ -71,14 +71,17 @@ Hello, World!
 Basic blocks are named after the loop that creates them (`loop6.body`, `loop6.end`). Passing `--label-blocks` additionally appends the span of Brainf*ck source each block covers, which is enough to read a *control flow graph* (CFG) back against the original program:
 
 ```bash
-$ bfc --label-blocks test/res/fib.b > fib.ll
-$ opt -passes=dot-cfg-only -disable-output fib.ll   # writes .main.dot
-$ dot -Tpng .main.dot -o fib_cfg.png
+$ scripts/cfg.sh test/res/fib.b                 # writes cfg.png
+$ scripts/cfg.sh -o fib_cfg.svg test/res/fib.b  # extension picks the format
 ```
 
-Both `opt` and `dot` are in the Nix devShell. Use `-passes=dot-cfg` instead of `dot-cfg-only` to include each block's instructions in the graph.
+The script chains `bfc --label-blocks` into `opt -passes=dot-cfg-only` into `dot`, theming the graph on the way through. `-b` selects the build directory (default `build`) and `-o` the output file, which must end in `.png` or `.svg`. Passing `-i` switches `opt` to `-passes=dot-cfg`, which prints each block's instructions in full and syntax-highlights them. Both `opt` and `dot` come from the Nix devShell.
 
-Two caveats. `opt` must match the LLVM version `bfc` links against, since older releases reject its opaque-pointer output. And `--label-blocks` is best left off `-O`: the `simplifycfg` pass merges and renames blocks, so the labels degrade and the graph no longer mirrors the source.
+Highlighting is why the theming lives in `scripts/highlight.py` rather than in a `sed` expression. A record label cannot carry per-token colour, so the script rewrites each one into a Graphviz *HTML-like label*: a table whose body rows are coloured token by token, and whose final row keeps the `<s0>` and `<s1>` ports that the branch edges attach to. The token rules are a port of [Prism](https://prismjs.com/)'s LLVM grammar, so a graph highlights the same way as LLVM IR rendered by Prism elsewhere. The port carries one deliberate divergence. Prism's LLVM component predates opaque pointers and has no rule for `ptr`, leaving its catch-all keyword rule to claim it, which colours `ptr` as though it were `store` or `align`. `bfc` emits opaque pointers throughout, so `highlight.py` adds `ptr` to the type rule. Across the 730 distinct instructions the test programs emit, that is the only disagreement between the two tokenisers.
+
+Theming needs one non-obvious flag. LLVM's CFG printer enables *heat colours* by default, shading each block by its execution frequency. Absent profile-guided optimisation (PGO) data every block carries the same default weight, so the shading encodes nothing while looking like it does. Worse, it is emitted inline on every node, and inline attributes beat `dot`'s `-N` and `-E` defaults, so the graph cannot be restyled at all. Passing `-cfg-heat-colors=false` drops the inline `color`, `fillcolor` and `fontname`, which frees the script to apply rounded nodes, a mono font, and edges coloured green for the true branch and red for the false one. Colouring by branch is what makes a loop back-edge legible at a glance.
+
+Two caveats, one of which the script now enforces. `opt` must match the LLVM version `bfc` was built against, so `cfg.sh` compares the two and refuses to run on a mismatch. That check earns its keep: a system `opt` shadowing the devShell may parse the opaque-pointer output with only a warning, then emit a graph that looks plausible and is wrong. The other caveat is that `--label-blocks` is best left off `-O`, since the `simplifycfg` pass merges and renames blocks, degrading the labels until the graph no longer mirrors the source. The script therefore omits `-O` unless asked with its own `-O` flag.
 
 Loops that `optimise_program()` rewrites into `CMD_CLEAR` or `CMD_MULTIPLY` lower to straight-line code and so contribute no blocks. They appear inside a label as `[-]` and `[mul]` respectively. This rewriting is unconditional, which is why `helloworld.b` graphs as a single block.
 
