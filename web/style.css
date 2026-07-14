@@ -101,7 +101,9 @@ body {
   flex: 1;
   overflow: hidden;
   position: relative;
-  background: #ffffff;
+  /* Matches highlight.py's dark graph background so the letterbox around
+     the SVG has no seam. */
+  background: #0d1117;
   cursor: grab;
   touch-action: none;
 }

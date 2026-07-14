@@ -161,10 +161,21 @@ func sanitiseSVG(svg []byte) []byte {
 	return svg
 }
 
+// cfgTheme picks the highlight.py palette from the ?theme= query. The web
+// demo omits it and defaults to dark, to match the dark UI; the light site
+// embed passes theme=light. Anything else falls back to dark.
+func cfgTheme(r *http.Request) string {
+	if r.URL.Query().Get("theme") == "light" {
+		return "light"
+	}
+	return "dark"
+}
+
 // renderCFG runs the control-flow-graph pipeline for a program:
 // bfc --emit-cfg-dot -> highlight.py -> dot -Tsvg. --cfg-instructions puts
-// each block's LLVM IR in its node, which highlight.py syntax-highlights.
-func renderCFG(code string) ([]byte, error) {
+// each block's LLVM IR in its node, which highlight.py syntax-highlights
+// with the given theme (light or dark).
+func renderCFG(code, theme string) ([]byte, error) {
 	dot, err := runStage(
 		exec.Command(bfcPath, "--emit-cfg-dot", "--cfg-instructions",
 			"--label-blocks"),
@@ -172,7 +183,8 @@ func renderCFG(code string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	themed, err := runStage(exec.Command("python3", highlightPath), dot)
+	themed, err := runStage(
+		exec.Command("python3", highlightPath, "--theme", theme), dot)
 	if err != nil {
 		return nil, err
 	}
@@ -191,13 +203,17 @@ func cfgHandler(w http.ResponseWriter, r *http.Request) {
 
 	nCfgRequests++
 	w.Header().Set("Content-Type", "image/svg+xml")
-	if svg, found := cfgCache[strInput]; found {
+	// Key the cache by theme too: the same program renders differently
+	// under the light and dark palettes.
+	theme := cfgTheme(r)
+	cacheKey := theme + "\x00" + strInput
+	if svg, found := cfgCache[cacheKey]; found {
 		nCfgCacheHits++
 		w.Write(svg)
 		return
 	}
 
-	svg, err := renderCFG(strInput)
+	svg, err := renderCFG(strInput, theme)
 	if err != nil {
 		log.Printf("CFG error: %v", err)
 		http.Error(w, "CFG generation failed", http.StatusBadRequest)
@@ -205,7 +221,7 @@ func cfgHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(svg)
-	cfgCache[strInput] = svg
+	cfgCache[cacheKey] = svg
 }
 
 func metricsHandler(w http.ResponseWriter, r *http.Request) {

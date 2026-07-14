@@ -18,6 +18,7 @@ priority, exactly as the ordering of keys in the Prism grammar object
 does. One deliberate divergence is noted at RULES below.
 """
 
+import argparse
 import html
 import re
 import sys
@@ -55,31 +56,95 @@ RULES = [
 # bfc emits has no construct that separates them.
 SCANNER = re.compile("|".join("(?P<%s>%s)" % (name, pat) for name, pat in RULES))
 
-COLOURS = {
-    "comment": "#6e7781",
-    "string": "#0a3069",
-    "boolean": "#0550ae",
-    "variable": "#0550ae",
-    "label": "#953800",
-    "type": "#8250df",
-    "keyword": "#cf222e",
-    "number": "#0a3069",
-    "punctuation": "#1f2328",
+# Two palettes, selected by --theme. `light` is GitHub's light syntax
+# theme; `dark` is its dark counterpart. The CLI (scripts/cfg.sh) leaves
+# the default at light; the web path renders dark to match the dark UI.
+# The keys mirror the token names in RULES, plus the structural colours
+# (plain text, node fill/border, graph background, edges).
+LIGHT = {
+    "colours": {
+        "comment": "#6e7781",
+        "string": "#0a3069",
+        "boolean": "#0550ae",
+        "variable": "#0550ae",
+        "label": "#953800",
+        "type": "#8250df",
+        "keyword": "#cf222e",
+        "number": "#0a3069",
+        "punctuation": "#1f2328",
+    },
+    "plain": "#1f2328",
+    "fill": "#f6f8fa",
+    "border": "#d0d7de",
+    "bg": "white",
+    "graph_fontcolor": "#57606a",
+    "edge": "#8c959f",
+    "edge_true": "#1a7f37",
+    "edge_false": "#cf222e",
 }
 
-PLAIN = "#1f2328"
-FILL = "#f6f8fa"
-BORDER = "#d0d7de"
+DARK = {
+    "colours": {
+        "comment": "#8b949e",
+        "string": "#a5d6ff",
+        "boolean": "#79c0ff",
+        "variable": "#79c0ff",
+        "label": "#ffa657",
+        "type": "#d2a8ff",
+        "keyword": "#ff7b72",
+        "number": "#79c0ff",
+        "punctuation": "#c9d1d9",
+    },
+    "plain": "#c9d1d9",
+    "fill": "#161b22",
+    "border": "#30363d",
+    "bg": "#0d1117",
+    "graph_fontcolor": "#8b949e",
+    "edge": "#6e7681",
+    "edge_true": "#3fb950",
+    "edge_false": "#f85149",
+}
 
-PREAMBLE = (
-    """\
-\tgraph [bgcolor="white", fontname="DejaVu Sans", fontsize=11,
-\t       fontcolor="#57606a", nodesep=0.35, ranksep=0.45, pad=0.25];
+THEMES = {"light": LIGHT, "dark": DARK}
+
+
+def build_preamble(theme):
+    """Render the graph/node/edge default attribute block for a theme."""
+    return """\
+\tgraph [bgcolor="%s", fontname="DejaVu Sans", fontsize=11,
+\t       fontcolor="%s", nodesep=0.35, ranksep=0.45, pad=0.25];
 \tnode [shape=plaintext, fontname="DejaVu Sans Mono", fontsize=11,
 \t      fontcolor="%s"];
-\tedge [color="#8c959f", penwidth=1.1, arrowsize=0.7];"""
-    % PLAIN
-)
+\tedge [color="%s", penwidth=1.1, arrowsize=0.7];""" % (
+        theme["bg"],
+        theme["graph_fontcolor"],
+        theme["plain"],
+        theme["edge"],
+    )
+
+
+# Active palette. apply_theme() repoints these from --theme; they default
+# to light so importing the module or omitting the flag matches the CLI.
+COLOURS = LIGHT["colours"]
+PLAIN = LIGHT["plain"]
+FILL = LIGHT["fill"]
+BORDER = LIGHT["border"]
+EDGE_TRUE = LIGHT["edge_true"]
+EDGE_FALSE = LIGHT["edge_false"]
+PREAMBLE = build_preamble(LIGHT)
+
+
+def apply_theme(theme):
+    """Point the module-level palette globals at the selected theme."""
+    global COLOURS, PLAIN, FILL, BORDER, PREAMBLE, EDGE_TRUE, EDGE_FALSE
+    COLOURS = theme["colours"]
+    PLAIN = theme["plain"]
+    FILL = theme["fill"]
+    BORDER = theme["border"]
+    EDGE_TRUE = theme["edge_true"]
+    EDGE_FALSE = theme["edge_false"]
+    PREAMBLE = build_preamble(theme)
+
 
 NODE_RE = re.compile(
     r"^(\s*)(Node0x[0-9a-f]+)\s*\[shape=record,\s*"
@@ -255,6 +320,18 @@ def colour_edge(line, port, colour):
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Theme an LLVM dot-cfg graph, syntax-highlighting the IR."
+    )
+    parser.add_argument(
+        "--theme",
+        choices=sorted(THEMES),
+        default="light",
+        help="colour palette to render with (default: light)",
+    )
+    args = parser.parse_args()
+    apply_theme(THEMES[args.theme])
+
     for line in sys.stdin:
         converted = convert(line)
         if converted is not None:
@@ -262,8 +339,8 @@ def main():
             continue
         # Colour branch edges by port: :s0 is the true successor, :s1 the
         # false one, which is what makes a loop back-edge legible.
-        line = colour_edge(line, ":s0", "#1a7f37")
-        line = colour_edge(line, ":s1", "#cf222e")
+        line = colour_edge(line, ":s0", EDGE_TRUE)
+        line = colour_edge(line, ":s1", EDGE_FALSE)
         sys.stdout.write(line)
         if line.lstrip().startswith("digraph "):
             sys.stdout.write(PREAMBLE + "\n")

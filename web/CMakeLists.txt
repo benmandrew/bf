@@ -1,7 +1,9 @@
 set(SITE_URL "http://localhost:8000/compile?code="
     CACHE STRING "URL for the BF compile endpoint used in the site build")
 
-set(SITE_CFG_URL "http://localhost:8000/cfg?code="
+# theme=light keeps the graph light for the light site embed (style.site.css);
+# the /cfg endpoint defaults to dark when no theme is given.
+set(SITE_CFG_URL "http://localhost:8000/cfg?theme=light&code="
     CACHE STRING "URL for the BF control-flow-graph endpoint used in the site build")
 
 set(SITE_DIST_DIR ${CMAKE_BINARY_DIR}/site)
