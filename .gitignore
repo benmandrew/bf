@@ -74,3 +74,10 @@ CMakeUserPresets.json
 web/server
 
 cbmc_outputs/
+
+# nix build output
+result
+result-*
+
+# python bytecode
+__pycache__/

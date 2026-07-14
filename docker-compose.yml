@@ -1,9 +1,10 @@
 services:
   bfc:
+    # Built with nix (`nix build .#bfcImage`), not a Dockerfile, so the CFG
+    # renderer (bfc, Graphviz, python3) matches the dev shell exactly. Load
+    # it locally with `nix build .#bfcImage && docker load < result`; CI
+    # publishes it to the registry.
     image: benmandrew/bf:bfc
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.bfc
     ports:
       - '8000:8000'
   nginx:
