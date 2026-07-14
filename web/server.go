@@ -7,13 +7,21 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"time"
 )
 
 var cache map[string][]byte
+var cfgCache map[string][]byte
 var nRequests int64
 var nCacheHits int64
+var nCfgRequests int64
+var nCfgCacheHits int64
 var compilationDurationSumSeconds float64
+
+// Set from the command line in main: the bfc binary and highlight.py.
+var bfcPath string
+var highlightPath string
 
 var allowedChars = map[rune]bool{
 	'>':  true,
@@ -64,23 +72,33 @@ func sanitiseInput(input string) (string, error) {
 	return filteredInput.String(), nil
 }
 
-func runHandler(w http.ResponseWriter, r *http.Request) {
+// corsAndSanitise applies the shared CORS headers, handles the OPTIONS
+// preflight and method check, and returns the sanitised program. The bool
+// is false when the request has already been fully answered (preflight or
+// error) and the handler should return.
+func corsAndSanitise(w http.ResponseWriter, r *http.Request) (string, bool) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
-		return
+		return "", false
 	}
 	if r.Method != http.MethodGet {
 		http.Error(w, "GET required", http.StatusMethodNotAllowed)
-		return
+		return "", false
 	}
-
-	input := []byte(r.URL.Query().Get("code"))
-	strInput, err := sanitiseInput(string(input))
+	strInput, err := sanitiseInput(r.URL.Query().Get("code"))
 	if err != nil {
 		http.Error(w, "Invalid input: "+err.Error(), http.StatusBadRequest)
+		return "", false
+	}
+	return strInput, true
+}
+
+func runHandler(w http.ResponseWriter, r *http.Request) {
+	strInput, ok := corsAndSanitise(w, r)
+	if !ok {
 		return
 	}
 
@@ -93,8 +111,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	programPath := os.Args[1]
-	cmd := exec.Command(programPath)
+	cmd := exec.Command(bfcPath)
 	cmd.Stdin = bytes.NewReader([]byte(strInput))
 
 	var stdout bytes.Buffer
@@ -103,7 +120,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	cmd.Stderr = &stderr
 
 	start := time.Now()
-	err = cmd.Run()
+	err := cmd.Run()
 	compilationDurationSumSeconds += time.Since(start).Seconds()
 	if err != nil {
 		log.Printf("Error: %v, stderr: %s", err, stderr.String())
@@ -113,6 +130,80 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Write(stdout.Bytes())
 	cache[strInput] = stdout.Bytes()
+}
+
+// runStage feeds stdin to cmd and returns its stdout, or an error carrying
+// the command's stderr for logging.
+func runStage(cmd *exec.Cmd, stdin []byte) ([]byte, error) {
+	cmd.Stdin = bytes.NewReader(stdin)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("%s: %w: %s", cmd.Path, err, stderr.String())
+	}
+	return stdout.Bytes(), nil
+}
+
+// Defence in depth for inlining the SVG into the page: Graphviz does not
+// emit any of these for a dot-cfg graph, and the program is already
+// restricted to Brainfuck characters with its labels HTML-escaped by
+// highlight.py, but strip active content anyway.
+var svgScriptRe = regexp.MustCompile(`(?is)<script.*?</script\s*>`)
+var svgForeignRe = regexp.MustCompile(`(?is)<foreignObject.*?</foreignObject\s*>`)
+var svgHandlerRe = regexp.MustCompile(`(?i)\son[a-z]+\s*=\s*("[^"]*"|'[^']*')`)
+
+func sanitiseSVG(svg []byte) []byte {
+	svg = svgScriptRe.ReplaceAll(svg, nil)
+	svg = svgForeignRe.ReplaceAll(svg, nil)
+	svg = svgHandlerRe.ReplaceAll(svg, nil)
+	return svg
+}
+
+// renderCFG runs the control-flow-graph pipeline for a program:
+// bfc --emit-cfg-dot -> highlight.py -> dot -Tsvg.
+func renderCFG(code string) ([]byte, error) {
+	dot, err := runStage(
+		exec.Command(bfcPath, "--emit-cfg-dot", "--label-blocks"),
+		[]byte(code))
+	if err != nil {
+		return nil, err
+	}
+	themed, err := runStage(exec.Command("python3", highlightPath), dot)
+	if err != nil {
+		return nil, err
+	}
+	svg, err := runStage(exec.Command("dot", "-Tsvg"), themed)
+	if err != nil {
+		return nil, err
+	}
+	return sanitiseSVG(svg), nil
+}
+
+func cfgHandler(w http.ResponseWriter, r *http.Request) {
+	strInput, ok := corsAndSanitise(w, r)
+	if !ok {
+		return
+	}
+
+	nCfgRequests++
+	w.Header().Set("Content-Type", "image/svg+xml")
+	if svg, found := cfgCache[strInput]; found {
+		nCfgCacheHits++
+		w.Write(svg)
+		return
+	}
+
+	svg, err := renderCFG(strInput)
+	if err != nil {
+		log.Printf("CFG error: %v", err)
+		http.Error(w, "CFG generation failed", http.StatusBadRequest)
+		return
+	}
+
+	w.Write(svg)
+	cfgCache[strInput] = svg
 }
 
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
@@ -138,17 +229,28 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "# HELP bfc_compilation_duration_seconds_mean Mean bfc compilation duration in seconds\n")
 	fmt.Fprintf(w, "# TYPE bfc_compilation_duration_seconds_mean gauge\n")
 	fmt.Fprintf(w, "bfc_compilation_duration_seconds_mean %f\n", meanCompilationDuration)
+	fmt.Fprintf(w, "# HELP bfc_cfg_requests_total Total number of CFG render requests\n")
+	fmt.Fprintf(w, "# TYPE bfc_cfg_requests_total counter\n")
+	fmt.Fprintf(w, "bfc_cfg_requests_total %d\n", nCfgRequests)
+	fmt.Fprintf(w, "# HELP bfc_cfg_cache_hits_total Total number of CFG cache hits\n")
+	fmt.Fprintf(w, "# TYPE bfc_cfg_cache_hits_total counter\n")
+	fmt.Fprintf(w, "bfc_cfg_cache_hits_total %d\n", nCfgCacheHits)
 }
 
 func main() {
+	if len(os.Args) < 3 {
+		log.Fatalf("usage: %s <bfc-path> <highlight.py-path>", os.Args[0])
+	}
+	bfcPath = os.Args[1]
+	highlightPath = os.Args[2]
+
 	cache = make(map[string][]byte)
-	nRequests = 0
-	nCacheHits = 0
-	compilationDurationSumSeconds = 0
+	cfgCache = make(map[string][]byte)
 
 	http.HandleFunc("/", runHandler)
+	http.HandleFunc("/cfg", cfgHandler)
 	http.HandleFunc("/metrics", metricsHandler)
-	log.Println("Listening on :8000 at /")
+	log.Println("Listening on :8000 at / (IR) and /cfg (control-flow graph)")
 	log.Println("Prometheus metrics available at /metrics")
 	log.Fatal(http.ListenAndServe("0.0.0.0:8000", nil))
 }
