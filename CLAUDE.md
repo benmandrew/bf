@@ -9,7 +9,7 @@ A Brainfuck-to-LLVM-IR compiler frontend written in C17. Produces two executable
 - **`bfc`** — compiler: reads `.b` files (or stdin), emits LLVM IR to stdout, or the control flow graph as Graphviz dot with `--emit-cfg-dot`
 - **`bfi`** — interpreter: reads `.b` files and executes them directly
 
-Run the web demo with `docker compose up` (served at `http://localhost:8080`); it shows the source, compiled IR, and control flow graph side by side. The backend renders the graph via `bfc --emit-cfg-dot` → `highlight.py` → `dot`, so its runtime image also carries Graphviz and Python.
+Run the web demo with `docker compose up` (served at `http://localhost:8080`); it shows the source, compiled IR, and control flow graph side by side, the graph's blocks holding syntax-highlighted IR. The backend renders via `bfc --emit-cfg-dot --cfg-instructions` → `highlight.py` → `dot`; its image is built with nix (`nix build .#bfcImage`, see `flake.nix`), not a Dockerfile, so bfc/Graphviz/Python match the dev shell — Debian's Graphviz is too old to draw the instruction-level labels.
 
 ## Build
 

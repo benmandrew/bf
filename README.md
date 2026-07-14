@@ -8,6 +8,8 @@ You can interact with it online [here](https://benmandrew.com/articles/compiler-
 $ docker compose up
 ```
 
+The `bfc` backend image is built with nix rather than a Dockerfile, so its CFG renderer — `bfc`, Graphviz and Python — is the same pinned toolchain as the dev shell (Debian's older Graphviz cannot draw the instruction-level blocks). `docker compose` pulls the published image; to build it locally instead, run `nix build .#bfcImage && docker load < result` first.
+
 The input validation and parsing functionality is formally verified to be memory safe for inputs up to thirteen commands long. Details are in [MODELCHECKING.md](MODELCHECKING.md).
 
 ![alt](docs/screenshot.png)

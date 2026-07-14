@@ -162,10 +162,12 @@ func sanitiseSVG(svg []byte) []byte {
 }
 
 // renderCFG runs the control-flow-graph pipeline for a program:
-// bfc --emit-cfg-dot -> highlight.py -> dot -Tsvg.
+// bfc --emit-cfg-dot -> highlight.py -> dot -Tsvg. --cfg-instructions puts
+// each block's LLVM IR in its node, which highlight.py syntax-highlights.
 func renderCFG(code string) ([]byte, error) {
 	dot, err := runStage(
-		exec.Command(bfcPath, "--emit-cfg-dot", "--label-blocks"),
+		exec.Command(bfcPath, "--emit-cfg-dot", "--cfg-instructions",
+			"--label-blocks"),
 		[]byte(code))
 	if err != nil {
 		return nil, err
