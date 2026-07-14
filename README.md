@@ -14,7 +14,7 @@ The input validation and parsing functionality is formally verified to be memory
 
 ## Dependencies
 
-The project ships a [Nix flake](https://nixos.wiki/wiki/Flakes) with a devShell providing every tool the build needs — cmake, LLVM/clang, `check`, `expect`, `clang-format`, `cpplint`, Doxygen, Graphviz, Python/Sphinx, `shfmt`, and `shellcheck` — pinned via `flake.lock` for reproducibility. This is what CI uses, and is the recommended way to build locally:
+The project ships a [Nix flake](https://nixos.wiki/wiki/Flakes) with a devShell providing every tool the build needs — cmake, LLVM/clang, `check`, `expect`, `clang-format`, `cpplint`, Doxygen, Graphviz, Python, `ruff`, `shfmt`, and `shellcheck` — pinned via `flake.lock` for reproducibility. This is what CI uses, and is the recommended way to build locally:
 
 ```bash
 $ nix develop
@@ -73,15 +73,12 @@ Basic blocks are named after the loop that creates them (`loop6.body`, `loop6.en
 ```bash
 $ scripts/cfg.sh test/res/fib.b                 # writes cfg.png
 $ scripts/cfg.sh -o fib_cfg.svg test/res/fib.b  # extension picks the format
+$ scripts/cfg.sh -i test/res/fib.b              # with each block's IR, highlighted
 ```
 
-The script chains `bfc --label-blocks` into `opt -passes=dot-cfg-only` into `dot`, theming the graph on the way through. `-b` selects the build directory (default `build`) and `-o` the output file, which must end in `.png` or `.svg`. Passing `-i` switches `opt` to `-passes=dot-cfg`, which prints each block's instructions in full and syntax-highlights them. Both `opt` and `dot` come from the Nix devShell.
+The script chains `bfc`, `opt` and `dot`, theming the graph and syntax-highlighting the IR on the way through; `scripts/cfg.sh -h` lists the remaining flags, and the two scripts document how the theming works and why the highlighting follows [Prism](https://prismjs.com/)'s LLVM grammar. It refuses to run when `opt` does not match the LLVM version `bfc` was built against, since a mismatched `opt` can quietly emit a misleading graph.
 
-Highlighting is why the theming lives in `scripts/highlight.py` rather than in a `sed` expression. A record label cannot carry per-token colour, so the script rewrites each one into a Graphviz *HTML-like label*: a table whose body rows are coloured token by token, and whose final row keeps the `<s0>` and `<s1>` ports that the branch edges attach to. The token rules are a port of [Prism](https://prismjs.com/)'s LLVM grammar, so a graph highlights the same way as LLVM IR rendered by Prism elsewhere. The port carries one deliberate divergence. Prism's LLVM component predates opaque pointers and has no rule for `ptr`, leaving its catch-all keyword rule to claim it, which colours `ptr` as though it were `store` or `align`. `bfc` emits opaque pointers throughout, so `highlight.py` adds `ptr` to the type rule. Across the 730 distinct instructions the test programs emit, that is the only disagreement between the two tokenisers.
-
-Theming needs one non-obvious flag. LLVM's CFG printer enables *heat colours* by default, shading each block by its execution frequency. Absent profile-guided optimisation (PGO) data every block carries the same default weight, so the shading encodes nothing while looking like it does. Worse, it is emitted inline on every node, and inline attributes beat `dot`'s `-N` and `-E` defaults, so the graph cannot be restyled at all. Passing `-cfg-heat-colors=false` drops the inline `color`, `fillcolor` and `fontname`, which frees the script to apply rounded nodes, a mono font, and edges coloured green for the true branch and red for the false one. Colouring by branch is what makes a loop back-edge legible at a glance.
-
-Two caveats, one of which the script now enforces. `opt` must match the LLVM version `bfc` was built against, so `cfg.sh` compares the two and refuses to run on a mismatch. That check earns its keep: a system `opt` shadowing the devShell may parse the opaque-pointer output with only a warning, then emit a graph that looks plausible and is wrong. The other caveat is that `--label-blocks` is best left off `-O`, since the `simplifycfg` pass merges and renames blocks, degrading the labels until the graph no longer mirrors the source. The script therefore omits `-O` unless asked with its own `-O` flag.
+`-O` is off by default, because the `simplifycfg` pass merges and renames blocks, degrading the labels until the graph no longer mirrors the source.
 
 Loops that `optimise_program()` rewrites into `CMD_CLEAR` or `CMD_MULTIPLY` lower to straight-line code and so contribute no blocks. They appear inside a label as `[-]` and `[mul]` respectively. This rewriting is unconditional, which is why `helloworld.b` graphs as a single block.
 
@@ -91,7 +88,7 @@ Loops that `optimise_program()` rewrites into `CMD_CLEAR` or `CMD_MULTIPLY` lowe
 $ cmake --build build --target fmt lint
 ```
 
-The C sources go through clang-format and cpplint. The shell and Python under `scripts/` and `verification/` go through `shfmt -i 4 -ci`, `shellcheck` and `ruff`, which `cmake/scripts.cmake` attaches to the same `fmt`, `fmt-ci` and `lint` targets. Every one of those tools comes from the devShell and is invoked by name rather than searched for, so a build outside `nix develop` that is missing one fails on it rather than skipping it silently.
+The C sources go through clang-format and cpplint; the shell and Python under `scripts/` and `verification/` go through `shfmt`, `shellcheck` and `ruff`. `cmake/scripts.cmake` attaches the latter three to the same targets.
 
 ### Documentation
 
@@ -101,7 +98,7 @@ Code docs can be accessed online at [benmandrew.com/docs/bf/](https://benmandrew
 $ cmake --build build --target docs
 ```
 
-Depends on Doxygen and Sphinx, both provided by the Nix devShell. The generated HTML site is written to `build/docs/html/index.html`.
+Doxygen comes from the devShell, but Sphinx is pip-installed into a virtualenv under `build/docs` at build time, so this target needs network access on a cold build. The generated HTML site is written to `build/docs/html/index.html`.
 
 ### Tests
 
