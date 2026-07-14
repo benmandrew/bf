@@ -359,6 +359,9 @@ static void cancel_opposing(struct program *program) {
                     new_cmds[i].type == CMD_JUMP_BACK) {
                         size_t old_target =
                             program->cmds[new_to_old[i]].value.jump_index;
+                        // Brackets are balanced, so jump_index always names a
+                        // command that exists.
+                        assert(old_target < program->length);
                         assert(old_to_new[old_target] != SIZE_MAX);
                         new_cmds[i].value.jump_index = old_to_new[old_target];
                 }
@@ -411,6 +414,9 @@ static void detect_clear_loops(struct program *program) {
                     new_cmds[i].type == CMD_JUMP_BACK) {
                         size_t old_target =
                             program->cmds[new_to_old[i]].value.jump_index;
+                        // Brackets are balanced, so jump_index always names a
+                        // command that exists.
+                        assert(old_target < program->length);
                         assert(old_to_new[old_target] != SIZE_MAX);
                         new_cmds[i].value.jump_index = old_to_new[old_target];
                 }
@@ -524,6 +530,9 @@ static void detect_multiply_loops(struct program *program) {
                     new_cmds[i].type == CMD_JUMP_BACK) {
                         size_t old_target =
                             program->cmds[new_to_old[i]].value.jump_index;
+                        // Brackets are balanced, so jump_index always names a
+                        // command that exists.
+                        assert(old_target < program->length);
                         assert(old_to_new[old_target] != SIZE_MAX);
                         new_cmds[i].value.jump_index = old_to_new[old_target];
                 }
