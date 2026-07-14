@@ -71,14 +71,20 @@
         highlightPy = pkgs.writeText "highlight.py"
           (builtins.readFile ./scripts/highlight.py);
 
-        # The bfc backend image, assembled from the same pinned packages the
-        # dev shell uses, so the CFG renders identically in production and in
-        # `nix develop`: bfc (LLVM 22), Graphviz and python3. Debian's
-        # Graphviz (2.42) cannot parse the instruction-level HTML labels.
+        # Slimmer runtimes for the image than the dev shell's: highlight.py
+        # is stdlib-only so python3Minimal suffices, and the graph is only
+        # ever emitted as SVG, so graphviz-nox (no X11) is enough.
+        runtimePython = pkgs.python3Minimal;
+        runtimeGraphviz = pkgs.graphviz-nox;
+
+        # The bfc backend image, assembled from the same pinned Graphviz and
+        # bfc the dev shell builds against, so the CFG renders identically in
+        # production and in `nix develop`. Debian's Graphviz (2.42) cannot
+        # parse the instruction-level HTML labels the renderer emits.
         bfcImage = pkgs.dockerTools.buildLayeredImage {
           name = "benmandrew/bf";
           tag = "bfc";
-          contents = [ bfc bfServer pkgs.graphviz pkgs.python3 ];
+          contents = [ bfc bfServer runtimeGraphviz runtimePython ];
           config = {
             Entrypoint = [
               "${bfServer}/bin/server"
@@ -86,7 +92,7 @@
               "${highlightPy}"
             ];
             Env = [
-              "PATH=${pkgs.lib.makeBinPath [ pkgs.graphviz pkgs.python3 ]}"
+              "PATH=${pkgs.lib.makeBinPath [ runtimeGraphviz runtimePython ]}"
             ];
             ExposedPorts = { "8000/tcp" = { }; };
           };
