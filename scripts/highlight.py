@@ -140,9 +140,34 @@ def colourise(line):
     return "".join(out)
 
 
+def rejoin_wraps(lines):
+    r"""Undo the line wrapping CFGPrinter applies to a record label.
+
+    LLVM breaks a label at eighty columns by inserting a literal "\l..."
+    at the last space, falling back to mid-token when there is no space
+    to break on. A continuation therefore starts with exactly "..."
+    followed by the text it displaced, and nothing bfc emits starts a
+    line that way.
+
+    The halves have to be put back together before tokenising. A wrap
+    lands inside a quoted identifier often enough to matter -- block
+    names carry Brainfuck source spans, which are long and need quoting
+    -- and half of one leaves an unterminated quote, which defeats the
+    string rule and gets the fragments read as ordinary code.
+    """
+    out = []
+    for line in lines:
+        if out and line.startswith("..."):
+            out[-1] += line[3:]
+        else:
+            out.append(line)
+    return out
+
+
 def clean_header(field):
     """Strip the quoting opt puts round a block name in dot-cfg mode."""
-    text = unescape(field).strip()
+    lines = [ln for ln in unescape(field).split("\n") if ln.strip()]
+    text = "".join(rejoin_wraps(lines)).strip()
     if text.endswith(":"):
         text = text[:-1]
     if len(text) > 1 and text.startswith('"') and text.endswith('"'):
@@ -177,6 +202,7 @@ def build_label(fields):
 
     for field in body:
         lines = [ln for ln in unescape(field).split("\n") if ln.strip()]
+        lines = rejoin_wraps(lines)
         if not lines:
             continue
         rows.append("<HR/>")
