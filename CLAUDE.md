@@ -6,10 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Brainfuck-to-LLVM-IR compiler frontend written in C17. Produces two executables:
 
-- **`bfc`** — compiler: reads `.b` files (or stdin), emits LLVM IR to stdout
+- **`bfc`** — compiler: reads `.b` files (or stdin), emits LLVM IR to stdout, or the control flow graph as Graphviz dot with `--emit-cfg-dot`
 - **`bfi`** — interpreter: reads `.b` files and executes them directly
 
-Run the web demo with `docker compose up` (served at `http://localhost:8080`).
+Run the web demo with `docker compose up` (served at `http://localhost:8080`); it shows the source, compiled IR, and control flow graph side by side. The backend renders the graph via `bfc --emit-cfg-dot` → `highlight.py` → `dot`, so its runtime image also carries Graphviz and Python.
 
 ## Build
 
@@ -43,12 +43,11 @@ build/bfi test/res/helloworld.b
 `bfc` also reads from stdin when no file argument is given.
 
 ```bash
-# Graph the CFG (see README "Visualising the Control Flow Graph")
-build/bfc --label-blocks test/res/fib.b > fib.ll
-opt -passes=dot-cfg-only -disable-output fib.ll && dot -Tpng .main.dot -o cfg.png
+# Graph the CFG (raw dot; scripts/cfg.sh themes it — see README)
+build/bfc --emit-cfg-dot --label-blocks test/res/fib.b | dot -Tpng -o cfg.png
 ```
 
-`--label-blocks` appends each block's Brainfuck source span to its name. Use it without `-O`, since `simplifycfg` merges and renames blocks. `opt` must match the LLVM version `bfc` links against.
+`--emit-cfg-dot` makes `bfc` emit the control flow graph as Graphviz dot instead of LLVM IR (`--cfg-instructions` includes each block's instructions). `--label-blocks` appends each block's Brainfuck source span to its name; use it without `-O`, since `simplifycfg` merges and renames blocks.
 
 ## Common Build Targets
 
@@ -77,6 +76,8 @@ read.c  →  ir.c  →  interp.c (bfi path)
 **`ir.c/h`** — Parsing into the internal IR. `string_to_program()` converts a cleaned source string into a `struct program` — a heap-allocated array of `struct cmd`. The IR compresses consecutive identical simple commands into a single entry with a `simple_count` field, and pre-computes matching bracket indices stored in `jump_index` (no runtime bracket matching needed during execution).
 
 **`llvm.c/h`** — LLVM IR code generation. `generate()` takes a `struct program` and returns an `LLVMModuleRef`. Uses the LLVM-C API (`llvm-c/Core.h`).
+
+**`cfg_dot.cpp/h`** — Control-flow-graph emission, behind `bfc --emit-cfg-dot`. `emit_cfg_dot()` writes the module's CFG as Graphviz dot via LLVM's C++ `WriteGraph`. The project's only C++ translation unit, so the devShell builds with the wrapped-clang stdenv (see `flake.nix`).
 
 **`interp.c/h`** — Tree-walking interpreter. Execution state is held in `struct context_t` (program counter, data tape of `DATA_SIZE` = 65536 bytes, data pointer). `interp()` steps one command per call and returns 1 when the program completes.
 
