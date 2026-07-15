@@ -89,6 +89,42 @@ jobs:
       - name: Test
         run: nix develop -c cmake --build build --target tests
 
+  wasm:
+    name: WebAssembly build + parity
+    runs-on: ubuntu-latest
+    needs: [lint, fmt]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - name: Cache Nix store
+        uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+      - name: Set up Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      # The LLVM wasm libraries are the slow part; cache them keyed on the
+      # build script (which pins the LLVM version and flags) so they rebuild
+      # only on a bump. check-wasm.sh skips the build when the prefix is warm.
+      - name: Cache LLVM wasm libraries
+        uses: actions/cache@v4
+        with:
+          path: build-wasm/llvm
+          key: wasm-llvm-${{ runner.os }}-${{ hashFiles('scripts/build-wasm-deps.sh') }}
+      - name: Build native bfc (parity oracle)
+        run: |
+          nix develop -c cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+          nix develop -c cmake --build build --target bfc
+      - name: Build wasm module and check parity against native bfc
+        run: scripts/check-wasm.sh
+
   docker:
     name: Push Docker Image (${{ matrix.image }}-${{ matrix.name }})
     needs: [test]
