@@ -82,5 +82,6 @@ else()
         src/read.c
         src/llvm.c
         src/cfg_dot.cpp
+        src/wasm_api.c
     )
 endif()
