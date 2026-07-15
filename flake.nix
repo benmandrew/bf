@@ -46,8 +46,9 @@
 
       in {
         # The web demo compiles client-side: bfc is built to WebAssembly (see
-        # scripts/build-wasm.sh) and runs in the browser, so there is no
-        # backend server image here any more -- nginx serves static files.
+        # scripts/build-wasm.sh) and runs in the browser. There is no backend
+        # and no server image -- the `site` CMake target stages a static bundle
+        # (build/site) that any static host can serve. See web/README.md.
         packages = {
           inherit bfc;
         };

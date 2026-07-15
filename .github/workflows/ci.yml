@@ -124,32 +124,28 @@ jobs:
           nix develop -c cmake --build build --target bfc
       - name: Build wasm module and check parity against native bfc
         run: scripts/check-wasm.sh
-      # The nginx image serves this; wasm is architecture-independent, so one
-      # build feeds both arch image builds below.
-      - name: Upload wasm module
+      # Assemble the client-side static site (HTML + JS + vendored Graphviz +
+      # the wasm module) and publish it as the artifact consumers deploy. The
+      # site is just static files, so any host that serves .mjs/.wasm with the
+      # right MIME type will do (see web/README.md).
+      - name: Stage static site
+        run: nix develop -c cmake --build build --target site
+      - name: Upload static site
         uses: actions/upload-artifact@v7
         with:
-          name: wasm-module
-          path: web/wasm
+          name: site
+          path: build/site
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
 
   docker:
     name: Push Docker Image (${{ matrix.image }}-${{ matrix.name }})
-    needs: [test, wasm]
+    needs: [test]
     if: github.ref == 'refs/heads/main' && github.server_url == 'https://github.com'
     strategy:
       fail-fast: false
       matrix:
         include:
-          - image: nginx
-            name: linux-amd64
-            runner: ubuntu-latest
-            platform: linux/amd64
-          - image: nginx
-            name: linux-arm64
-            runner: ubuntu-24.04-arm
-            platform: linux/arm64
           - image: fuzz
             name: linux-amd64
             runner: ubuntu-latest
@@ -168,13 +164,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      # The nginx image serves the prebuilt wasm module; restore it into the
-      # build context. Harmless for the fuzz image, which does not use it.
-      - name: Download wasm module
-        uses: actions/download-artifact@v7
-        with:
-          name: wasm-module
-          path: web/wasm
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v7
@@ -204,7 +193,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [nginx, fuzz]
+        image: [fuzz]
     env:
       IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/bf
     steps:
