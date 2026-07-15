@@ -27,4 +27,5 @@ add_custom_target(site
         ${CMAKE_CURRENT_SOURCE_DIR}/style.site.css
         ${SITE_DIST_DIR}/bf.css
     COMMENT "Building site assets"
+    VERBATIM
 )
