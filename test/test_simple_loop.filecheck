@@ -6,25 +6,25 @@
 ; CHECK: ; ModuleID = 'main'
 ; CHECK: source_filename = "main"
 
-; @dp is now an alloca inside main, not a global.
+; @dp is an alloca inside main, not a global; the tape is private.
 ; CHECK-NOT: @dp = global
-; CHECK: @data = global [65536 x i8] zeroinitializer
+; CHECK: @data = private global [65536 x i8] zeroinitializer
 
 ; CHECK: define i32 @main() {
 ; CHECK: entry:
-; CHECK: %dp = alloca i32, align 4
-; CHECK: store i32 0, ptr %dp, align 4
+; CHECK: %dp = alloca i64, align 8
+; CHECK: store i64 0, ptr %dp
 
 ; Initial addition of 5 to current cell (+++++).
-; CHECK: %[[DP1:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR1:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP1]]
+; CHECK: %[[DP1:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR1:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP1]]
 ; CHECK: %[[VAL1:.*]] = load i8, ptr %[[PTR1]], align 1
 ; CHECK: %[[ADD:.*]] = add i8 %[[VAL1]], 5
 ; CHECK: store i8 %[[ADD]], ptr %[[PTR1]], align 1
 
 ; CMD_CLEAR: [-] collapses to a single store of zero.
-; CHECK: %[[DP2:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR2:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP2]]
+; CHECK: %[[DP2:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR2:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP2]]
 ; CHECK: store i8 0, ptr %[[PTR2]], align 1
 
 ; Return statement

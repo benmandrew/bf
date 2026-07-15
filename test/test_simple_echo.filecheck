@@ -5,29 +5,30 @@
 ; CHECK: ; ModuleID = 'main'
 ; CHECK: source_filename = "main"
 
-; @dp is now an alloca inside main, not a global.
+; @dp is an alloca inside main, not a global; the tape is private.
 ; CHECK-NOT: @dp = global
-; CHECK: @data = global [65536 x i8] zeroinitializer
+; CHECK: @data = private global [65536 x i8] zeroinitializer
 
-; CHECK: declare i32 @putchar(i32)
-
-; CHECK: declare i32 @getchar()
+; The I/O declarations only touch inaccessible memory, never the tape.
+; CHECK: declare i32 @putchar(i32) #[[ATTR:[0-9]+]]
+; CHECK: declare i32 @getchar() #[[ATTR]]
 
 ; CHECK: define i32 @main() {
 ; CHECK: entry:
-; CHECK: %dp = alloca i32, align 4
-; CHECK: store i32 0, ptr %dp, align 4
+; CHECK: %dp = alloca i64, align 8
+; CHECK: store i64 0, ptr %dp
 
-; Input operation (,) - read character with getchar
-; CHECK: %[[DP1:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR1:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP1]]
-; CHECK: %[[GETCHAR:.*]] = call i32 @getchar()
+; Input operation (,) - read character with getchar. The !range annotation
+; records that the result is EOF (-1) or a byte 0..255.
+; CHECK: %[[DP1:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR1:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP1]]
+; CHECK: %[[GETCHAR:.*]] = call i32 @getchar(){{.*}}!range ![[RANGE:[0-9]+]]
 ; CHECK: %[[TRUNC:.*]] = trunc i32 %[[GETCHAR]] to i8
 ; CHECK: store i8 %[[TRUNC]], ptr %[[PTR1]], align 1
 
 ; Output operation (.) - write character with putchar
-; CHECK: %[[DP2:.*]] = load i32, ptr %dp, align 4
-; CHECK: %[[PTR2:.*]] = getelementptr [65536 x i8], ptr @data, i32 0, i32 %[[DP2]]
+; CHECK: %[[DP2:.*]] = load i64, ptr %dp
+; CHECK: %[[PTR2:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP2]]
 ; CHECK: %[[VAL:.*]] = load i8, ptr %[[PTR2]], align 1
 ; CHECK: %[[EXT:.*]] = zext i8 %[[VAL]] to i32
 ; CHECK: %[[PUTCHAR:.*]] = call i32 @putchar(i32 %[[EXT]])
@@ -35,3 +36,6 @@
 ; Return statement
 ; CHECK: ret i32 0
 ; CHECK: }
+
+; CHECK: attributes #[[ATTR]] = { memory(inaccessiblemem: readwrite) }
+; CHECK: ![[RANGE]] = !{i32 -1, i32 256}

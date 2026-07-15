@@ -81,8 +81,31 @@ static LLVMTypeRef int8_type(struct llvm_context *ctx) {
         return LLVMInt8TypeInContext(ctx->context);
 }
 
+/// Type of the data pointer and of every GEP index into the tape. Making the
+/// index i64 keeps the pointer arithmetic sign-extension-free, so a loop that
+/// moves the pointer becomes a clean pointer recurrence for LLVM's induction
+/// variable and loop-idiom passes.
+static LLVMTypeRef index_type(struct llvm_context *ctx) {
+        return LLVMInt64TypeInContext(ctx->context);
+}
+
 static LLVMTypeRef data_array_type(struct llvm_context *ctx) {
         return LLVMArrayType(int8_type(ctx), DATA_SIZE);
+}
+
+/// Encoded value of the `memory(inaccessiblemem: readwrite)` function
+/// attribute: ModRefInfo::ModRef (3) shifted into the InaccessibleMem slot
+/// (location 1, two bits per location). It tells LLVM that putchar/getchar
+/// touch only state the module cannot see — never the tape — so loads and
+/// stores to the tape may be optimised across an I/O call.
+#define MEMORY_INACCESSIBLEMEM_READWRITE (3ULL << 2)
+
+/// Attach `memory(inaccessiblemem: readwrite)` to a declared I/O function.
+static void set_io_memory_effects(struct llvm_context *ctx, LLVMValueRef func) {
+        unsigned kind = LLVMGetEnumAttributeKindForName("memory", 6);
+        LLVMAttributeRef attr = LLVMCreateEnumAttribute(
+            ctx->context, kind, MEMORY_INACCESSIBLEMEM_READWRITE);
+        LLVMAddAttributeAtIndex(func, LLVMAttributeFunctionIndex, attr);
 }
 
 void create_putchar_declaration(struct llvm_context *ctx) {
@@ -90,12 +113,14 @@ void create_putchar_declaration(struct llvm_context *ctx) {
         ctx->putchar.type = LLVMFunctionType(i32, (LLVMTypeRef[]){i32}, 1, 0);
         ctx->putchar.func =
             LLVMAddFunction(ctx->module, "putchar", ctx->putchar.type);
+        set_io_memory_effects(ctx, ctx->putchar.func);
 }
 
 void create_getchar_declaration(struct llvm_context *ctx) {
         ctx->getchar.type = LLVMFunctionType(int32_type(ctx), NULL, 0, 0);
         ctx->getchar.func =
             LLVMAddFunction(ctx->module, "getchar", ctx->getchar.type);
+        set_io_memory_effects(ctx, ctx->getchar.func);
 }
 
 struct llvm_context create_module_preamble(struct program *program,
@@ -115,6 +140,10 @@ struct llvm_context create_module_preamble(struct program *program,
         }
         ctx.data = LLVMAddGlobal(ctx.module, data_array_type(&ctx), "data");
         LLVMSetInitializer(ctx.data, LLVMConstNull(data_array_type(&ctx)));
+        // The tape is only ever touched from within main; private linkage lets
+        // whole-module passes reason about it (and shrink it to the cells the
+        // program actually uses).
+        LLVMSetLinkage(ctx.data, LLVMPrivateLinkage);
         ctx.js = jump_stack_new();
         return ctx;
 }
@@ -131,17 +160,17 @@ void create_main_function(struct llvm_context *ctx) {
         LLVMBasicBlockRef entry_block =
             LLVMAppendBasicBlockInContext(ctx->context, ctx->main, "entry");
         LLVMPositionBuilderAtEnd(ctx->builder, entry_block);
-        ctx->dp = LLVMBuildAlloca(ctx->builder, int32_type(ctx), "dp");
-        LLVMBuildStore(ctx->builder, LLVMConstInt(int32_type(ctx), 0, 0),
+        ctx->dp = LLVMBuildAlloca(ctx->builder, index_type(ctx), "dp");
+        LLVMBuildStore(ctx->builder, LLVMConstInt(index_type(ctx), 0, 0),
                        ctx->dp);
 }
 
 LLVMValueRef get_dataptr(struct llvm_context *ctx) {
         LLVMValueRef dp_value =
-            LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "");
-        LLVMValueRef indices[] = {LLVMConstInt(int32_type(ctx), 0, 0),
+            LLVMBuildLoad2(ctx->builder, index_type(ctx), ctx->dp, "");
+        LLVMValueRef indices[] = {LLVMConstInt(index_type(ctx), 0, 0),
                                   dp_value};
-        LLVMValueRef data_ptr = LLVMBuildGEP2(
+        LLVMValueRef data_ptr = LLVMBuildInBoundsGEP2(
             ctx->builder, data_array_type(ctx), ctx->data, indices, 2, "");
         return data_ptr;
 }
@@ -168,36 +197,56 @@ void sub(struct llvm_context *ctx, size_t value) {
 
 void right(struct llvm_context *ctx, size_t value) {
         LLVMValueRef dp_value =
-            LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "");
+            LLVMBuildLoad2(ctx->builder, index_type(ctx), ctx->dp, "");
         LLVMValueRef new_dp =
-            LLVMBuildAdd(ctx->builder, dp_value,
-                         LLVMConstInt(int32_type(ctx), value, 0), "");
+            LLVMBuildNSWAdd(ctx->builder, dp_value,
+                            LLVMConstInt(index_type(ctx), value, 0), "");
         LLVMBuildStore(ctx->builder, new_dp, ctx->dp);
 }
 
 void left(struct llvm_context *ctx, size_t value) {
         LLVMValueRef dp_value =
-            LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "");
+            LLVMBuildLoad2(ctx->builder, index_type(ctx), ctx->dp, "");
         LLVMValueRef new_dp =
-            LLVMBuildSub(ctx->builder, dp_value,
-                         LLVMConstInt(int32_type(ctx), value, 0), "");
+            LLVMBuildNSWSub(ctx->builder, dp_value,
+                            LLVMConstInt(index_type(ctx), value, 0), "");
         LLVMBuildStore(ctx->builder, new_dp, ctx->dp);
 }
 
-void dot(struct llvm_context *ctx) {
+/// Emit `count` copies of `.` (write current cell). The cell does not change
+/// between writes and putchar cannot touch the tape, so the value is loaded and
+/// zero-extended once and fed to every call.
+void output(struct llvm_context *ctx, size_t count) {
         LLVMValueRef data_ptr = get_dataptr(ctx);
         LLVMValueRef current_value =
             LLVMBuildLoad2(ctx->builder, int8_type(ctx), data_ptr, "");
         LLVMValueRef extended_value =
             LLVMBuildZExt(ctx->builder, current_value, int32_type(ctx), "");
-        LLVMBuildCall2(ctx->builder, ctx->putchar.type, ctx->putchar.func,
-                       &extended_value, 1, "");
+        for (size_t i = 0; i < count; i++) {
+                LLVMBuildCall2(ctx->builder, ctx->putchar.type,
+                               ctx->putchar.func, &extended_value, 1, "");
+        }
+}
+
+/// Attach `!range !{i32 -1, i32 256}` to a getchar result: the wrapped range
+/// covers EOF (-1) and every byte value 0..255, letting LLVM fold the
+/// surrounding truncations and comparisons.
+static void set_getchar_range(struct llvm_context *ctx, LLVMValueRef call) {
+        LLVMTypeRef i32 = int32_type(ctx);
+        LLVMMetadataRef bounds[] = {
+            LLVMValueAsMetadata(LLVMConstInt(i32, (uint64_t)-1, 1)),
+            LLVMValueAsMetadata(LLVMConstInt(i32, 256, 0)),
+        };
+        LLVMMetadataRef node = LLVMMDNodeInContext2(ctx->context, bounds, 2);
+        unsigned kind = LLVMGetMDKindIDInContext(ctx->context, "range", 5);
+        LLVMSetMetadata(call, kind, LLVMMetadataAsValue(ctx->context, node));
 }
 
 void comma(struct llvm_context *ctx) {
         LLVMValueRef data_ptr = get_dataptr(ctx);
         LLVMValueRef getchar_result = LLVMBuildCall2(
             ctx->builder, ctx->getchar.type, ctx->getchar.func, NULL, 0, "");
+        set_getchar_range(ctx, getchar_result);
         LLVMValueRef char_value =
             LLVMBuildTrunc(ctx->builder, getchar_result, int8_type(ctx), "");
         LLVMBuildStore(ctx->builder, char_value, data_ptr);
@@ -210,16 +259,16 @@ void multiply(struct llvm_context *ctx, struct multiply_move *moves,
             LLVMBuildLoad2(ctx->builder, int8_type(ctx), counter_ptr, "");
         for (size_t i = 0; i < n_moves; i++) {
                 LLVMValueRef dp_value =
-                    LLVMBuildLoad2(ctx->builder, int32_type(ctx), ctx->dp, "");
+                    LLVMBuildLoad2(ctx->builder, index_type(ctx), ctx->dp, "");
                 LLVMValueRef offset =
-                    LLVMConstInt(int32_type(ctx), (uint64_t)moves[i].offset, 1);
+                    LLVMConstInt(index_type(ctx), (uint64_t)moves[i].offset, 1);
                 LLVMValueRef target_idx =
-                    LLVMBuildAdd(ctx->builder, dp_value, offset, "");
-                LLVMValueRef indices[] = {LLVMConstInt(int32_type(ctx), 0, 0),
+                    LLVMBuildNSWAdd(ctx->builder, dp_value, offset, "");
+                LLVMValueRef indices[] = {LLVMConstInt(index_type(ctx), 0, 0),
                                           target_idx};
                 LLVMValueRef target_ptr =
-                    LLVMBuildGEP2(ctx->builder, data_array_type(ctx), ctx->data,
-                                  indices, 2, "");
+                    LLVMBuildInBoundsGEP2(ctx->builder, data_array_type(ctx),
+                                          ctx->data, indices, 2, "");
                 LLVMValueRef target = LLVMBuildLoad2(
                     ctx->builder, int8_type(ctx), target_ptr, "");
                 LLVMValueRef factor =
@@ -319,11 +368,7 @@ LLVMModuleRef generate(struct program *program, bool optimise,
                         left(&ctx, command.value.simple_count);
                         break;
                 case CMD_SIMPLE_OUTPUT:
-                        for (size_t output_index = 0;
-                             output_index < command.value.simple_count;
-                             output_index++) {
-                                dot(&ctx);
-                        }
+                        output(&ctx, command.value.simple_count);
                         break;
                 case CMD_SIMPLE_INPUT:
                         for (size_t input_index = 0;
@@ -358,9 +403,12 @@ LLVMModuleRef generate(struct program *program, bool optimise,
         LLVMDisposeBuilder(ctx.builder);
         if (optimise) {
                 LLVMPassBuilderOptionsRef opts = LLVMCreatePassBuilderOptions();
-                LLVMErrorRef err = LLVMRunPasses(
-                    ctx.module, "mem2reg,instcombine,simplifycfg,gvn", NULL,
-                    opts);
+                // The full -O2 pipeline: adds DSE, LICM, IndVarSimplify and
+                // LoopIdiomRecognize on top of the earlier hand-picked passes.
+                // bfc's output is usually compiled at clang -O0, so whatever is
+                // not folded here is not folded downstream either.
+                LLVMErrorRef err =
+                    LLVMRunPasses(ctx.module, "default<O2>", NULL, opts);
                 if (err) {
                         char *msg = LLVMGetErrorMessage(err);
                         fprintf(stderr, "Pass error: %s\n", msg);
