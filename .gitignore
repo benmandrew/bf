@@ -82,3 +82,6 @@ result-*
 # Python bytecode, e.g. from importing scripts/highlight.py
 __pycache__/
 *.py[cod]
+
+# Node modules for scripts/screenshot.js (see scripts/package.json)
+node_modules/

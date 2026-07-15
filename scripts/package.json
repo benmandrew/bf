@@ -1,0 +1,12 @@
+{
+  "name": "bf-screenshot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Regenerate docs/screenshot.png, the README image of the web UI (see screenshot.js).",
+  "scripts": {
+    "screenshot": "node screenshot.js"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.56.0"
+  }
+}
