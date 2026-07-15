@@ -107,6 +107,10 @@ body {
   border: 0;
   resize: none;
   outline: none;
+  /* Brainfuck source has no words, and [ ] > < are soft-break points, so
+     the default wrap breaks lines early. Break at any character to fill
+     each line to the edge. */
+  word-break: break-all;
 }
 
 .cfg-view {
