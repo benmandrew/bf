@@ -44,63 +44,12 @@
           '';
         };
 
-        # The web server: one stdlib-only Go file, so a bare offline
-        # `go build` with no module resolution suffices.
-        bfServer = pkgs.stdenv.mkDerivation {
-          pname = "bf-server";
-          version = "1.0.0";
-          src = pkgs.lib.fileset.toSource {
-            root = ./web;
-            fileset = ./web/server.go;
-          };
-          nativeBuildInputs = [ pkgs.go ];
-          buildPhase = ''
-            runHook preBuild
-            export HOME="$TMPDIR" GOCACHE="$TMPDIR/go-cache"
-            export GOPROXY=off GO111MODULE=off CGO_ENABLED=0
-            go build -o server server.go
-            runHook postBuild
-          '';
-          installPhase = ''
-            runHook preInstall
-            install -Dm755 server "$out/bin/server"
-            runHook postInstall
-          '';
-        };
-
-        highlightPy = pkgs.writeText "highlight.py"
-          (builtins.readFile ./scripts/highlight.py);
-
-        # Slimmer runtimes for the image than the dev shell's: highlight.py
-        # is stdlib-only so python3Minimal suffices, and the graph is only
-        # ever emitted as SVG, so graphviz-nox (no X11) is enough.
-        runtimePython = pkgs.python3Minimal;
-        runtimeGraphviz = pkgs.graphviz-nox;
-
-        # The bfc backend image, assembled from the same pinned Graphviz and
-        # bfc the dev shell builds against, so the CFG renders identically in
-        # production and in `nix develop`. Debian's Graphviz (2.42) cannot
-        # parse the instruction-level HTML labels the renderer emits.
-        bfcImage = pkgs.dockerTools.buildLayeredImage {
-          name = "benmandrew/bf";
-          tag = "bfc";
-          contents = [ bfc bfServer runtimeGraphviz runtimePython ];
-          config = {
-            Entrypoint = [
-              "${bfServer}/bin/server"
-              "${bfc}/bin/bfc"
-              "${highlightPy}"
-            ];
-            Env = [
-              "PATH=${pkgs.lib.makeBinPath [ runtimeGraphviz runtimePython ]}"
-            ];
-            ExposedPorts = { "8000/tcp" = { }; };
-          };
-        };
       in {
+        # The web demo compiles client-side: bfc is built to WebAssembly (see
+        # scripts/build-wasm.sh) and runs in the browser, so there is no
+        # backend server image here any more -- nginx serves static files.
         packages = {
-          inherit bfc bfcImage;
-          server = bfServer;
+          inherit bfc;
         };
 
         # Build with LLVM 22's wrapped clang stdenv, not clang-unwrapped.
