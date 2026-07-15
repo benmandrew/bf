@@ -77,6 +77,18 @@ body {
   box-shadow: 0 2px 8px rgba(2, 6, 23, 0.6);
 }
 
+/* The Brainfuck source needs less room than the IR and the graph: a
+   20-40-40 split. The ratios distribute width on desktop; when the panes
+   stack on mobile the media query overrides them with heights. */
+#leftPane {
+  flex: 2;
+}
+
+#rightPane,
+#cfgPane {
+  flex: 4;
+}
+
 .pane header {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.02);
@@ -132,6 +144,20 @@ body {
 @media (max-width:800px) {
   #split {
     flex-direction: column;
+    /* Grow with the stacked panes and let the page scroll, rather than
+       squeezing all three into one viewport height. */
+    height: auto;
+  }
+
+  /* Stacked, the width ratios no longer apply; give each pane a usable
+     minimum height. The editor needs less than the IR and the graph. */
+  #leftPane {
+    min-height: 12em;
+  }
+
+  #rightPane,
+  #cfgPane {
+    min-height: 28em;
   }
 
   #topbar .right {
