@@ -8,18 +8,26 @@ You can try the project online at:
 
 https://benmandrew.com/articles/compiler-frontend
 
-Run Locally with Docker Compose
---------------------------------
+Run the Web Interface Locally
+-----------------------------
 
-To run the web interface locally:
+The web demo compiles in the browser: ``bfc`` is built to WebAssembly, so it
+is a static site with no backend. Build the bundle and serve it (building the
+wasm module needs the Emscripten SDK):
 
 .. code-block:: bash
 
-	$ docker compose up
+	$ scripts/build-wasm.sh
+	$ nix develop -c cmake -B build
+	$ nix develop -c cmake --build build --target site
+	$ cd build/site && nix develop -c python3 -m http.server 8080
 
 Then open:
 
 http://localhost:8080
+
+See ``web/README.md`` for the pipeline and the MIME types a static host must
+set.
 
 Build the CLI Tools
 -------------------

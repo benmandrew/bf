@@ -2,13 +2,16 @@
 
 A compiler frontend for the [Brainf*ck language](https://en.wikipedia.org/wiki/Brainfuck) that outputs code in LLVM Intermediate Representation (IR), which can then be compiled to any desired target architecture with `clang`.
 
-You can interact with it online [here](https://benmandrew.com/articles/compiler-frontend), or in a self-hosted web interface — which shows the Brainf*ck source, the compiled LLVM IR, and its control flow graph side by side — accessed at [`http://localhost:8080`](http://localhost:8080) after running
+You can interact with it online [here](https://benmandrew.com/articles/compiler-frontend), or self-host the web interface — which shows the Brainf*ck source, the compiled LLVM IR, and its control flow graph side by side. The demo runs entirely in the browser: `bfc` is built to WebAssembly and compiles client-side, with no backend. Build the static bundle and serve it locally:
 
 ```bash
-$ docker compose up
+$ scripts/build-wasm.sh                               # web/wasm/bfc.{mjs,wasm} — needs the Emscripten SDK
+$ nix develop -c cmake -B build
+$ nix develop -c cmake --build build --target site    # -> build/site/
+$ cd build/site && nix develop -c python3 -m http.server 8080
 ```
 
-The `bfc` backend image is built with nix rather than a Dockerfile, so its CFG renderer — `bfc`, Graphviz and Python — is the same pinned toolchain as the dev shell (Debian's older Graphviz cannot draw the instruction-level blocks). `docker compose` pulls the published image; to build it locally instead, run `nix build .#bfcImage && docker load < result` first.
+Then open [`http://localhost:8080`](http://localhost:8080). The control flow graph is themed and syntax-highlighted in the browser (`web/highlight.js`), then laid out by a vendored Graphviz compiled to WebAssembly. See [`web/README.md`](web/README.md) for the full pipeline and the MIME types a static host must set.
 
 The input validation and parsing functionality is formally verified to be memory safe for inputs up to thirteen commands long. Details are in [MODELCHECKING.md](MODELCHECKING.md).
 
