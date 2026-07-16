@@ -80,7 +80,7 @@ emcmake cmake -S "$src_dir/llvm" -B "$build_dir" -G Ninja \
     -DLLVM_ENABLE_LIBPFM=OFF \
     -DLLVM_ENABLE_BACKTRACES=OFF \
     -DLLVM_ENABLE_CRASH_OVERRIDES=OFF \
-    "${tablegen_arg[@]}"
+    ${tablegen_arg[@]+"${tablegen_arg[@]}"}
 
 echo "Building LLVM component libraries"
 ninja -C "$build_dir" \
