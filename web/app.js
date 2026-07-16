@@ -7,8 +7,6 @@
   const statusEl = document.getElementById("status");
   const cfgStatusEl = document.getElementById("cfgStatus");
 
-  let debounceTimer = null;
-  const DEBOUNCE_MS = 600;
   // dot-cfg record labels render dark to match the UI (see highlight.js).
   const THEME = "dark";
 
@@ -162,11 +160,6 @@
     container.ondblclick = () => { [x, y, w, h] = home; apply(); };
   }
 
-  function scheduleCompile() {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(compile, DEBOUNCE_MS);
-  }
-
   if (btnCompile) btnCompile.addEventListener("click", compile);
 
   if (btnDownload)
@@ -183,7 +176,7 @@
       URL.revokeObjectURL(url);
     });
 
-  bfEditor.addEventListener("input", scheduleCompile);
+  bfEditor.addEventListener("input", compile);
 
   bfEditor.addEventListener("keydown", function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
@@ -193,5 +186,5 @@
   });
 
   bfEditor.value = "+++[.-]";
-  window.addEventListener("load", function () { scheduleCompile(); });
+  window.addEventListener("load", function () { compile(); });
 })();
