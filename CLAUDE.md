@@ -9,7 +9,7 @@ A Brainfuck-to-LLVM-IR compiler frontend written in C17. Produces two executable
 - **`bfc`** — compiler: reads `.b` files (or stdin), emits LLVM IR to stdout, or the control flow graph as Graphviz dot with `--emit-cfg-dot`
 - **`bfi`** — interpreter: reads `.b` files and executes them directly
 
-Run the web demo with `docker compose up` (served at `http://localhost:8080`); it shows the source, compiled IR, and control flow graph side by side, the graph's blocks holding syntax-highlighted IR. The backend renders via `bfc --emit-cfg-dot --cfg-instructions` → `highlight.py` → `dot`; its image is built with nix (`nix build .#bfcImage`, see `flake.nix`), not a Dockerfile, so bfc/Graphviz/Python match the dev shell — Debian's Graphviz is too old to draw the instruction-level labels.
+The web demo compiles entirely in the browser: `bfc` is built to WebAssembly (`scripts/build-wasm.sh`) and runs client-side, so the demo is static files with no backend. It shows the source, compiled IR, and control flow graph side by side, the graph's blocks holding syntax-highlighted IR (`web/worker.js` runs `bfc.wasm` → dot → `web/highlight.js` → a vendored Graphviz wasm → SVG). Build the static bundle with the `site` CMake target; see `web/README.md` for the pipeline, build steps, and the MIME types a host must set.
 
 ## Build
 
@@ -79,6 +79,8 @@ read.c  →  ir.c  →  interp.c (bfi path)
 
 **`cfg_dot.cpp/h`** — Control-flow-graph emission, behind `bfc --emit-cfg-dot`. `emit_cfg_dot()` writes the module's CFG as Graphviz dot via LLVM's C++ `WriteGraph`. The project's only C++ translation unit, so the devShell builds with the wrapped-clang stdenv (see `flake.nix`).
 
+**`wasm_api.c/h`** — String-returning entry points shared by the native `bfc` and the WebAssembly build: `bf_compile_ir()` and `bf_compile_cfg_dot()` take raw Brainfuck source and return the LLVM IR / CFG dot as a heap-allocated string (freed with `bf_free`). `main_bfc.c` is a thin caller that writes the string to stdout; the browser calls the same functions compiled to wasm. Keeping this the one compile path is why `emit_cfg_dot()` returns a string rather than writing to `stdout`.
+
 **`interp.c/h`** — Tree-walking interpreter. Execution state is held in `struct context_t` (program counter, data tape of `DATA_SIZE` = 65536 bytes, data pointer). `interp()` steps one command per call and returns 1 when the program completes.
 
 **`common.h`** — Shared constant: `DATA_SIZE 65536`.
@@ -102,6 +104,15 @@ FileCheck tests pipe `bfc <input.b>` output through the corresponding `.filechec
 - **Scripts**: shell is `shfmt -i 4 -ci` + shellcheck, Python is `ruff format` + `ruff check`; both wired into `fmt`/`fmt-ci`/`lint` by `cmake/scripts.cmake`
 - **Linting**: cpplint at `linelength=80`; suppressed filters: `legal/copyright`, `build/include_subdir`, `build/header_guard`, `readability/braces`
 - Debug builds automatically enable `-fsanitize=address,undefined`; on macOS suppress the spurious ASan warning with `MallocNanoZone=0`
+
+## WebAssembly build
+
+`bfc`'s compiler core is cross-compiled to WebAssembly for the client-side web demo. The Emscripten SDK is outside the Nix devShell's scope (like CBMC and AFL below), so this runs separately:
+
+- `scripts/build-wasm-deps.sh` cross-builds the LLVM libraries `bfc` links (`core, support, irreader, passes, analysis`, no target backends) into a prefix — slow, cached in CI keyed on the script.
+- `scripts/build-wasm.sh` links `ir/read/llvm/cfg_dot/wasm_api` into `web/wasm/bfc.{mjs,wasm}`, exporting the `wasm_api` surface. Needs `-fno-rtti -fno-exceptions` (LLVM is built without them) and `-Wl,--start-group`.
+- `scripts/check-wasm.sh` (`wasm_parity.mjs`) diffs both exported functions against native `bfc` over `test/res/*.b`, pinning the wasm output to the flake's LLVM. Run in the CI `wasm` job.
+- `web/highlight.js` is a port of `scripts/highlight.py`; `scripts/highlight.py` stays because `scripts/cfg.sh` (the CLI CFG renderer) still uses it.
 
 ## Formal Verification and Fuzzing
 

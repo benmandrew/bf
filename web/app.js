@@ -1,92 +1,129 @@
-(function(){
-  const bfEditor = document.getElementById('bfEditor');
-  const irView = document.getElementById('irView');
-  const cfgView = document.getElementById('cfgView');
-  const btnCompile = document.getElementById('btnCompile');
-  const btnDownload = document.getElementById('btnDownload');
-  const statusEl = document.getElementById('status');
-  const cfgStatusEl = document.getElementById('cfgStatus');
+(function () {
+  const bfEditor = document.getElementById("bfEditor");
+  const irView = document.getElementById("irView");
+  const cfgView = document.getElementById("cfgView");
+  const btnCompile = document.getElementById("btnCompile");
+  const btnDownload = document.getElementById("btnDownload");
+  const statusEl = document.getElementById("status");
+  const cfgStatusEl = document.getElementById("cfgStatus");
 
   let debounceTimer = null;
   const DEBOUNCE_MS = 600;
+  // dot-cfg record labels render dark to match the UI (see highlight.js).
+  const THEME = "dark";
 
-  function setStatus(msg){ if (statusEl) statusEl.textContent = msg; }
-  function setCfgStatus(msg){ if (cfgStatusEl) cfgStatusEl.textContent = msg; }
+  function setStatus(msg) { if (statusEl) statusEl.textContent = msg; }
+  function setCfgStatus(msg) { if (cfgStatusEl) cfgStatusEl.textContent = msg; }
 
-  async function fetchIR(code){
-    try {
-      const res = await fetch('__BF_COMPILE_URL__' + encodeURIComponent(code));
-      const text = await res.text();
-      if (!res.ok){
-        irView.textContent = text || `Compiler error: ${res.status}`;
-        setStatus('Error');
-      } else {
-        irView.textContent = text;
-        setStatus('OK');
+  // Validate input before it reaches the wasm compiler. This used to be the
+  // server's job (server.go sanitiseInput); client-side it is a UX guard that
+  // gives a clear message and keeps malformed programs -- unbalanced loops
+  // especially -- from reaching bfc at all.
+  const ALLOWED = new Set(["+", "-", ">", "<", ".", ",", "[", "]", "\n", " "]);
+  function sanitiseInput(input) {
+    if (input.length > 10000) return { error: "Input too long" };
+    let depth = 0;
+    for (let i = 0; i < input.length; i++) {
+      const ch = input[i];
+      if (!ALLOWED.has(ch)) {
+        return { error: `Invalid character ${JSON.stringify(ch)} at location ${i + 1}` };
       }
-    } catch (err){
-      irView.textContent = 'Network error: ' + err.message;
-      setStatus('Network error');
+      if (ch === "[") depth++;
+      else if (ch === "]") depth--;
     }
-    if (window.Prism) Prism.highlightElement(irView);
+    if (depth !== 0) return { error: "Mismatched loops" };
+    return { value: input };
   }
 
-  async function fetchCFG(code){
-    setCfgStatus('Rendering…');
-    try {
-      const res = await fetch('__BF_CFG_URL__' + encodeURIComponent(code));
-      if (!res.ok){
-        const text = await res.text();
-        cfgView.innerHTML = '';
-        setCfgStatus(text || `CFG error: ${res.status}`);
-        return;
-      }
-      const svg = await res.text();
-      // Inline the SVG, dropping the XML prolog/doctype so the HTML parser
-      // treats <svg> as an element. The server strips active content.
-      const i = svg.indexOf('<svg');
-      cfgView.innerHTML = i >= 0 ? svg.slice(i) : svg;
-      initPanZoom(cfgView);
-      setCfgStatus('OK');
-    } catch (err){
-      cfgView.innerHTML = '';
-      setCfgStatus('Network error: ' + err.message);
-    }
+  // Defence in depth for inlining the SVG: Graphviz emits none of these for a
+  // dot-cfg graph and the labels are HTML-escaped by highlight.js, but strip
+  // active content anyway (mirrors server.go sanitiseSVG).
+  function sanitiseSVG(svg) {
+    return svg
+      .replace(/<script[\s\S]*?<\/script\s*>/gi, "")
+      .replace(/<foreignObject[\s\S]*?<\/foreignObject\s*>/gi, "")
+      .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*')/gi, "");
   }
 
-  async function compile(){
-    const code = bfEditor.value;
-    if (!code){
-      irView.textContent = '';
-      if (cfgView) cfgView.innerHTML = '';
-      setStatus('No input');
-      setCfgStatus('No input');
+  // One module worker runs bfc + Graphviz. Requests are tagged with an
+  // incrementing id so a slow render from an earlier keystroke cannot
+  // overwrite the result of a later one.
+  const worker = new Worker("worker.js", { type: "module" });
+  let reqId = 0;
+  let lastApplied = 0;
+
+  worker.onmessage = (e) => {
+    const { id, ir, svg, error } = e.data;
+    if (id < lastApplied) return;
+    lastApplied = id;
+    if (error) {
+      irView.textContent = error;
+      cfgView.innerHTML = "";
+      setStatus("Error");
+      setCfgStatus("Error");
       return;
     }
-    setStatus('Compiling…');
-    const jobs = [fetchIR(code)];
-    if (cfgView) jobs.push(fetchCFG(code));
-    await Promise.all(jobs);
+    irView.textContent = ir;
+    if (window.Prism) Prism.highlightElement(irView);
+    setStatus("OK");
+
+    const clean = sanitiseSVG(svg);
+    const i = clean.indexOf("<svg");
+    cfgView.innerHTML = i >= 0 ? clean.slice(i) : clean;
+    initPanZoom(cfgView);
+    setCfgStatus("OK");
+  };
+
+  worker.onerror = (e) => {
+    setStatus("Worker error");
+    setCfgStatus("Worker error");
+    irView.textContent = "Worker error: " + (e.message || "failed to load");
+  };
+
+  function compile() {
+    const code = bfEditor.value;
+    if (!code) {
+      irView.textContent = "";
+      cfgView.innerHTML = "";
+      setStatus("No input");
+      setCfgStatus("No input");
+      return;
+    }
+    const checked = sanitiseInput(code);
+    if (checked.error) {
+      irView.textContent = "Invalid input: " + checked.error;
+      cfgView.innerHTML = "";
+      setStatus("Error");
+      setCfgStatus("Error");
+      return;
+    }
+    setStatus("Compiling…");
+    setCfgStatus("Rendering…");
+    worker.postMessage({ id: ++reqId, code: checked.value, theme: THEME });
   }
 
-  // Turn the injected <svg> into a pan/zoom viewport by driving its
-  // viewBox. Handlers are assigned (not addEventListener) so re-rendering
-  // replaces them instead of stacking duplicates.
-  function initPanZoom(container){
-    const svg = container.querySelector('svg');
+  // Turn the injected <svg> into a pan/zoom viewport by driving its viewBox.
+  // Handlers are assigned (not addEventListener) so re-rendering replaces them
+  // instead of stacking duplicates.
+  function initPanZoom(container) {
+    const svg = container.querySelector("svg");
     if (!svg) return;
-    svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '100%');
-    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
-    let vb = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
-    if (vb.length !== 4 || vb.some(Number.isNaN)){
-      try { const b = svg.getBBox(); vb = [b.x, b.y, b.width, b.height]; }
-      catch (_){ vb = [0, 0, 100, 100]; }
+    let vb = (svg.getAttribute("viewBox") || "").split(/[\s,]+/).map(Number);
+    if (vb.length !== 4 || vb.some(Number.isNaN)) {
+      try {
+        const b = svg.getBBox();
+        vb = [b.x, b.y, b.width, b.height];
+      } catch (_) {
+        vb = [0, 0, 100, 100];
+      }
     }
     const home = vb.slice();
     let [x, y, w, h] = vb;
-    const apply = () => svg.setAttribute('viewBox', `${x} ${y} ${w} ${h}`);
+    const apply = () => svg.setAttribute("viewBox", `${x} ${y} ${w} ${h}`);
     apply();
 
     container.onwheel = (e) => {
@@ -96,7 +133,6 @@
       const my = (e.clientY - r.top) / r.height;
       const factor = Math.exp(e.deltaY * 0.0015);
       const nw = w * factor, nh = h * factor;
-      // Clamp zoom so the graph cannot invert or shrink/grow to nothing.
       if (nw < home[2] / 50 || nw > home[2] * 50) return;
       x += mx * (w - nw);
       y += my * (h - nh);
@@ -112,49 +148,50 @@
     container.onpointermove = (e) => {
       if (!dragging) return;
       const r = container.getBoundingClientRect();
-      x -= (e.clientX - px) / r.width * w;
-      y -= (e.clientY - py) / r.height * h;
+      x -= ((e.clientX - px) / r.width) * w;
+      y -= ((e.clientY - py) / r.height) * h;
       px = e.clientX; py = e.clientY;
       apply();
     };
     const endDrag = (e) => {
       dragging = false;
-      try { container.releasePointerCapture(e.pointerId); } catch (_){}
+      try { container.releasePointerCapture(e.pointerId); } catch (_) {}
     };
     container.onpointerup = endDrag;
     container.onpointercancel = endDrag;
     container.ondblclick = () => { [x, y, w, h] = home; apply(); };
   }
 
-  function scheduleCompile(){
+  function scheduleCompile() {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(compile, DEBOUNCE_MS);
   }
 
-  if (btnCompile) btnCompile.addEventListener('click', compile);
+  if (btnCompile) btnCompile.addEventListener("click", compile);
 
-  if (btnDownload) btnDownload.addEventListener('click', function(){
-    const text = irView.textContent || '';
-    const blob = new Blob([text], {type: 'text/plain'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'main.ll';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  });
+  if (btnDownload)
+    btnDownload.addEventListener("click", function () {
+      const text = irView.textContent || "";
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "main.ll";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
 
-  bfEditor.addEventListener('input', scheduleCompile);
+  bfEditor.addEventListener("input", scheduleCompile);
 
-  bfEditor.addEventListener('keydown', function(e){
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
+  bfEditor.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
       compile();
     }
   });
 
   bfEditor.value = "+++[.-]";
-  window.addEventListener('load', function(){ scheduleCompile(); });
+  window.addEventListener("load", function () { scheduleCompile(); });
 })();

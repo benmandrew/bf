@@ -1,5 +1,9 @@
 #include "cfg_dot.h"
 
+#include <cstdlib>
+#include <cstring>
+#include <string>
+
 #include <llvm/Analysis/BranchProbabilityInfo.h>
 #include <llvm/Analysis/CFGPrinter.h>
 #include <llvm/Analysis/LoopInfo.h>
@@ -21,8 +25,10 @@
 // the same weight while still stamping inline colours that defeat theming.
 // WriteGraph's ShortNames selects between the two printers: true is
 // dot-cfg-only (block labels), false is dot-cfg (labels plus instructions).
-extern "C" void emit_cfg_dot(LLVMModuleRef module, bool include_instructions) {
+extern "C" char *emit_cfg_dot(LLVMModuleRef module, bool include_instructions) {
         llvm::Module *m = llvm::unwrap(module);
+        std::string dot;
+        llvm::raw_string_ostream os(dot);
         // bfc emits a single defined function, main; putchar/getchar and
         // friends are declarations and carry no CFG to print.
         for (llvm::Function &f : *m) {
@@ -43,8 +49,12 @@ extern "C" void emit_cfg_dot(LLVMModuleRef module, bool include_instructions) {
                 // the output identical to opt -passes=dot-cfg[-only].
                 cfg_info.setEdgeWeights(false);
                 cfg_info.setRawEdgeWeights(false);
-                llvm::WriteGraph(llvm::outs(), &cfg_info,
+                llvm::WriteGraph(os, &cfg_info,
                                  /*ShortNames=*/!include_instructions);
         }
-        llvm::outs().flush();
+        // Hand back plain malloc'd memory so C callers (and bf_free) own it
+        // with the standard allocator, independent of LLVM's.
+        char *buf = static_cast<char *>(std::malloc(dot.size() + 1));
+        std::memcpy(buf, dot.c_str(), dot.size() + 1);
+        return buf;
 }

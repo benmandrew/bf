@@ -2,13 +2,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
-#include "cfg_dot.h"
-#include "ir.h"
-#include "llvm.h"
 #include "read.h"
+#include "wasm_api.h"
 
 void print_usage(const char *program_name) {
         printf("Usage: %s [OPTIONS] <input_file>\n", program_name);
@@ -98,20 +95,12 @@ int main(int argc, char **argv) {
                           &cfg_instructions, &program_str) != 0) {
                 return 1;
         }
-        struct program parsed_program = string_to_program(program_str);
+        char *output = emit_cfg
+                           ? bf_compile_cfg_dot(program_str, optimise,
+                                                label_blocks, cfg_instructions)
+                           : bf_compile_ir(program_str, optimise, label_blocks);
         free(program_str);
-        optimise_program(&parsed_program);
-        LLVMModuleRef module =
-            generate(&parsed_program, optimise, label_blocks);
-        if (emit_cfg) {
-                emit_cfg_dot(module, cfg_instructions);
-        } else {
-                char *err = NULL;
-                LLVMPrintModuleToFile(module, "/dev/stdout", &err);
-                if (err)
-                        LLVMDisposeMessage(err);
-        }
-        dispose_module(module);
-        free(parsed_program.cmds);
+        fputs(output, stdout);
+        bf_free(output);
         return 0;
 }

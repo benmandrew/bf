@@ -85,3 +85,6 @@ __pycache__/
 
 # Node modules for scripts/screenshot.js (see scripts/package.json)
 node_modules/
+
+# WebAssembly build of bfc (produced by scripts/build-wasm.sh)
+web/wasm/
