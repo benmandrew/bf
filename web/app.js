@@ -2,8 +2,9 @@
   const bfEditor = document.getElementById("bfEditor");
   const irView = document.getElementById("irView");
   const cfgView = document.getElementById("cfgView");
-  const btnCompile = document.getElementById("btnCompile");
   const btnDownload = document.getElementById("btnDownload");
+  const optimiseEl = document.getElementById("optimise");
+  const cfgWarnEl = document.getElementById("cfgWarn");
   const statusEl = document.getElementById("status");
   const cfgStatusEl = document.getElementById("cfgStatus");
 
@@ -97,7 +98,9 @@
     }
     setStatus("Compiling…");
     setCfgStatus("Rendering…");
-    worker.postMessage({ id: ++reqId, code: checked.value, theme: THEME });
+    const optimise = !!(optimiseEl && optimiseEl.checked);
+    if (cfgWarnEl) cfgWarnEl.hidden = !optimise;
+    worker.postMessage({ id: ++reqId, code: checked.value, theme: THEME, optimise });
   }
 
   // Turn the injected <svg> into a pan/zoom viewport by driving its viewBox.
@@ -160,8 +163,6 @@
     container.ondblclick = () => { [x, y, w, h] = home; apply(); };
   }
 
-  if (btnCompile) btnCompile.addEventListener("click", compile);
-
   if (btnDownload)
     btnDownload.addEventListener("click", function () {
       const text = irView.textContent || "";
@@ -177,6 +178,8 @@
     });
 
   bfEditor.addEventListener("input", compile);
+
+  if (optimiseEl) optimiseEl.addEventListener("change", compile);
 
   bfEditor.addEventListener("keydown", function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {

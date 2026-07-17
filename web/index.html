@@ -13,7 +13,9 @@
   <div id="topbar">
     <div class="left">Brainfuck → LLVM IR</div>
     <div class="right">
-      <button id="btnCompile">Compile</button>
+      <label id="optToggle" title="Run the LLVM optimisation pipeline before emitting IR and the CFG">
+        <input type="checkbox" id="optimise"> Optimise
+      </label>
       <button id="btnDownload">Download IR</button>
     </div>
   </div>
@@ -35,7 +37,10 @@
       <header>Control Flow Graph</header>
       <div id="cfgView" class="cfg-view" role="img" aria-label="Control flow graph"
            title="Drag to pan · scroll to zoom · double-click to reset"></div>
-      <div class="footer" id="cfgStatus">Ready</div>
+      <div class="footer cfg-footer">
+        <span id="cfgStatus">Ready</span>
+        <span id="cfgWarn" class="warn" hidden>optimised — blocks merged/renamed, no longer mapped to source</span>
+      </div>
     </section>
   </main>
 

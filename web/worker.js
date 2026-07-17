@@ -17,16 +17,19 @@ function init() {
 }
 
 self.onmessage = async (e) => {
-  const { id, code, theme } = e.data;
+  const { id, code, theme, optimise } = e.data;
+  const opt = optimise ? 1 : 0;
   try {
     const [mod, graphviz] = await init();
     const ir = mod.ccall(
       "bf_compile_ir", "string",
-      ["string", "number", "number"], [code, 0, 0]);
-    // --cfg-instructions --label-blocks: the flags the server passed bfc.
+      ["string", "number", "number"], [code, opt, 0]);
+    // --cfg-instructions plus --label-blocks (the flags the server passed
+    // bfc), but label-blocks only without -O: simplifycfg merges and renames
+    // blocks, so the source spans it appends would be wrong under optimisation.
     const dot = mod.ccall(
       "bf_compile_cfg_dot", "string",
-      ["string", "number", "number", "number"], [code, 0, 1, 1]);
+      ["string", "number", "number", "number"], [code, opt, opt ? 0 : 1, 1]);
     const svg = graphviz.dot(highlightDot(dot, theme));
     self.postMessage({ id, ir, svg });
   } catch (err) {

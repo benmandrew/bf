@@ -47,6 +47,35 @@ body {
   color: var(--text);
 }
 
+#optToggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+#optToggle input {
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.cfg-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.warn {
+  margin-left: auto;
+  text-align: right;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 400;
+}
+
 #topbar button {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.06);
