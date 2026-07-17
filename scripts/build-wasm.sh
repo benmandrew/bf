@@ -46,7 +46,7 @@ echo "Linking $WASM_OUT/bfc.mjs"
 # wasm_api surface plus malloc/free so callers can own returned strings.
 emcc -Oz -flto -fno-rtti -fno-exceptions \
     -sMODULARIZE=1 -sEXPORT_ES6=1 -sENVIRONMENT=node,web,worker \
-    -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 -sINVOKE_RUN=0 \
+    -sALLOW_MEMORY_GROWTH=1 -sGROWABLE_ARRAYBUFFERS=0 -sEXIT_RUNTIME=0 -sINVOKE_RUN=0 \
     -sEXPORTED_FUNCTIONS=_bf_compile_ir,_bf_compile_cfg_dot,_bf_free,_malloc,_free \
     -sEXPORTED_RUNTIME_METHODS=ccall,cwrap \
     -I "$ROOT/src" -I "$LLVM_WASM_PREFIX/include" \
