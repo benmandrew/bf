@@ -104,12 +104,8 @@ jobs:
         uses: nix-community/cache-nix-action@v6
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
-      - name: Set up Emscripten
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: latest
-      - name: Install Ninja
-        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      # emscripten and ninja come from the flake devShell, so the wasm build
+      # runs entirely under `nix develop` -- no separate emsdk install.
       # The LLVM wasm libraries are the slow part; cache them keyed on the
       # build script (which pins the LLVM version and flags) so they rebuild
       # only on a bump. check-wasm.sh skips the build when the prefix is warm.
@@ -123,7 +119,7 @@ jobs:
           nix develop -c cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
           nix develop -c cmake --build build --target bfc
       - name: Build wasm module and check parity against native bfc
-        run: scripts/check-wasm.sh
+        run: nix develop -c scripts/check-wasm.sh
       # Assemble the client-side static site (HTML + JS + vendored Graphviz +
       # the wasm module) and publish it as the artifact consumers deploy. The
       # site is just static files, so any host that serves .mjs/.wasm with the

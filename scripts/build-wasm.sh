@@ -20,7 +20,7 @@ LLVM_WASM_PREFIX="${LLVM_WASM_PREFIX:-$ROOT/build-wasm/llvm}"
 WASM_OUT="${WASM_OUT:-$ROOT/web/wasm}"
 
 if ! command -v emcc >/dev/null 2>&1; then
-    echo "error: emcc not found; activate the Emscripten SDK first" >&2
+    echo "error: emcc not found; run inside 'nix develop' (or activate an Emscripten SDK)" >&2
     exit 1
 fi
 

@@ -63,6 +63,7 @@
         devShells.default = (pkgs.mkShell.override { stdenv = llvm.stdenv; }) {
           packages = [
             pkgs.cmake
+            pkgs.ninja
             pkgs.pkg-config
             llvm.llvm
             llvm.clang-tools
@@ -75,7 +76,20 @@
             pkgs.ruff
             pkgs.shfmt
             pkgs.shellcheck
+            # Emscripten for the client-side wasm build (scripts/build-wasm*.sh):
+            # emcc/emcmake, replacing a separately-installed ~/emsdk. ninja above
+            # drives the LLVM wasm cross-build.
+            pkgs.emscripten
           ];
+
+          # emscripten's cache lives in the read-only Nix store, but emcc writes
+          # the wasm sysroot libraries (libc, libc++, ...) into it on first link.
+          # Point EM_CACHE at a writable, gitignored dir (under build-wasm/, which
+          # already holds the wasm scratch) so the build works and the generated
+          # libs persist across shells -- the ~25s populate happens only once.
+          shellHook = ''
+            export EM_CACHE="''${EM_CACHE:-$PWD/build-wasm/emcache}"
+          '';
         };
       });
 }

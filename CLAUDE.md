@@ -107,7 +107,7 @@ FileCheck tests pipe `bfc <input.b>` output through the corresponding `.filechec
 
 ## WebAssembly build
 
-`bfc`'s compiler core is cross-compiled to WebAssembly for the client-side web demo. The Emscripten SDK is outside the Nix devShell's scope (like CBMC and AFL below), so this runs separately:
+`bfc`'s compiler core is cross-compiled to WebAssembly for the client-side web demo. Emscripten (`emcc`/`emcmake`) and `ninja` come from the Nix devShell, so `nix develop` is all that is needed — no separately-installed `~/emsdk`. The devShell's `shellHook` sets `EM_CACHE` to a writable, gitignored dir (`build-wasm/emcache`) because emscripten's store cache is read-only; the wasm sysroot libraries build into it on first link.
 
 - `scripts/build-wasm-deps.sh` cross-builds the LLVM libraries `bfc` links (`core, support, irreader, passes, analysis`, no target backends) into a prefix — slow, cached in CI keyed on the script.
 - `scripts/build-wasm.sh` links `ir/read/llvm/cfg_dot/wasm_api` into `web/wasm/bfc.{mjs,wasm}`, exporting the `wasm_api` surface. Needs `-fno-rtti -fno-exceptions` (LLVM is built without them) and `-Wl,--start-group`.

@@ -32,7 +32,7 @@ LLVM_WASM_PREFIX="${LLVM_WASM_PREFIX:-$ROOT/build-wasm/llvm}"
 WASM_WORK="${WASM_WORK:-$ROOT/build-wasm/work}"
 
 if ! command -v emcmake >/dev/null 2>&1; then
-    echo "error: emcmake not found; activate the Emscripten SDK first" >&2
+    echo "error: emcmake not found; run inside 'nix develop' (or activate an Emscripten SDK)" >&2
     exit 1
 fi
 

@@ -32,13 +32,13 @@ loops, length) as a usability guard before handing it to the worker.
 
 ## Building
 
-The wasm module is built by `scripts/build-wasm.sh`, which needs the
-[Emscripten SDK](https://emscripten.org/) on `PATH` (outside the Nix devShell's
-scope, like the CBMC and fuzzing tools). It builds the LLVM libraries once —
-slow — then links `bfc` into `wasm/`:
+The wasm module is built by `scripts/build-wasm.sh`, which needs
+[Emscripten](https://emscripten.org/) (`emcc`/`emcmake`) and `ninja` — both
+provided by the Nix devShell, so run it inside `nix develop`. It builds the LLVM
+libraries once — slow — then links `bfc` into `wasm/`:
 
 ```bash
-scripts/build-wasm.sh                          # -> web/wasm/bfc.{mjs,wasm}
+nix develop -c scripts/build-wasm.sh           # -> web/wasm/bfc.{mjs,wasm}
 ```
 
 The `site` target then stages the whole bundle into `build/site`, ready to
