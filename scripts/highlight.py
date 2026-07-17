@@ -109,11 +109,20 @@ THEMES = {"light": LIGHT, "dark": DARK}
 
 
 def build_preamble(theme):
-    """Render the graph/node/edge default attribute block for a theme."""
+    """Render the graph/node/edge default attribute block for a theme.
+
+    Node text is Courier, not a nicer mono like DejaVu Sans Mono, because the
+    browser build lays the graph out with the wasm Graphviz, which has no font
+    files: it estimates text extents from its built-in PostScript AFM metrics
+    and falls back to *proportional* Times for any name it does not know there.
+    Courier is the one monospace font in that built-in set, so naming it keeps
+    the layout monospace in the browser. Native dot (this CLI) resolves Courier
+    to a real monospaced font via fontconfig, so it is unaffected. The web demo
+    then renders with an embedded Courier-metric font (see web/style.css)."""
     return """\
 \tgraph [bgcolor="%s", fontname="DejaVu Sans", fontsize=11,
 \t       fontcolor="%s", nodesep=0.35, ranksep=0.45, pad=0.25];
-\tnode [shape=plaintext, fontname="DejaVu Sans Mono", fontsize=11,
+\tnode [shape=plaintext, fontname="Courier", fontsize=11,
 \t      fontcolor="%s"];
 \tedge [color="%s", penwidth=1.1, arrowsize=0.7];""" % (
         theme["bg"],

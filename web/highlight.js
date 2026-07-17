@@ -82,11 +82,19 @@ function escapeHtml(s) {
     .replaceAll("'", "&#x27;");
 }
 
+// Node text is Courier, not a nicer mono like DejaVu Sans Mono, because the
+// wasm Graphviz that lays out the browser graph has no font files: it estimates
+// text extents from its built-in PostScript AFM metrics and falls back to
+// proportional Times for any name it does not know there, which packs the
+// coloured token runs too tightly and they overlap when a real monospace font
+// renders them. Courier is the one monospace font in that built-in set, so the
+// layout stays monospace; style.css then renders it with an embedded
+// Courier-metric font. Keep this in sync with scripts/highlight.py.
 function buildPreamble(theme) {
   return (
     `\tgraph [bgcolor="${theme.bg}", fontname="DejaVu Sans", fontsize=11,\n` +
     `\t       fontcolor="${theme.graph_fontcolor}", nodesep=0.35, ranksep=0.45, pad=0.25];\n` +
-    `\tnode [shape=plaintext, fontname="DejaVu Sans Mono", fontsize=11,\n` +
+    `\tnode [shape=plaintext, fontname="Courier", fontsize=11,\n` +
     `\t      fontcolor="${theme.plain}"];\n` +
     `\tedge [color="${theme.edge}", penwidth=1.1, arrowsize=0.7];`
   );
