@@ -182,6 +182,19 @@ int interp(struct context_t *ctx, int out_fd, int in_fd, bool byte_output) {
                 ctx->data[ctx->dp] = 0;
                 break;
         case CMD_MULTIPLY:
+                // Check every target before writing any of them, so an
+                // out-of-bounds move leaves the tape untouched, as the simple
+                // moves above do.
+                for (size_t i = 0; i < current_cmd.value.multiply.n_moves;
+                     i++) {
+                        int offset = current_cmd.value.multiply.moves[i].offset;
+                        if (offset < 0) {
+                                if ((size_t)-offset > ctx->dp)
+                                        return -1;
+                        } else if ((size_t)offset >= DATA_SIZE - ctx->dp) {
+                                return -1;
+                        }
+                }
                 for (size_t i = 0; i < current_cmd.value.multiply.n_moves;
                      i++) {
                         int target = (int)ctx->dp +

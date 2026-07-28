@@ -13,8 +13,8 @@
   <div id="topbar">
     <div class="left">Brainfuck → LLVM IR</div>
     <div class="right">
-      <label id="optToggle" title="Run the LLVM optimisation pipeline before emitting IR and the CFG">
-        <input type="checkbox" id="optimise"> Optimise
+      <label id="optToggle" title="Run the LLVM optimisation pipeline before emitting IR and the CFG. On by default: every pointer move carries a bounds check, and unoptimised the graph is mostly check blocks">
+        <input type="checkbox" id="optimise" checked> Optimise
       </label>
       <button id="btnDownload">Download IR</button>
     </div>

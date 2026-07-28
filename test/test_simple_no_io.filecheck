@@ -1,4 +1,4 @@
-; RUN: %bf %s.b --emit-llvm | FileCheck %s
+; RUN: bfc --unoptimised %s.b | FileCheck %s
 
 ; CHECK: ; ModuleID = 'main'
 ; CHECK: source_filename = "main"
@@ -19,9 +19,15 @@
 ; CHECK: %[[ADD1:.*]] = add i8 %[[VAL1]], 2
 ; CHECK: store i8 %[[ADD1]], ptr %[[PTR1]], align 1
 
-; Move right operation (>); pointer arithmetic carries nsw.
+; Move right operation (>). The arithmetic wraps rather than carrying nsw,
+; because the bounds check reads its result and poison would defeat it. One
+; unsigned compare covers both ends of the tape, since moving left past zero
+; wraps to near 2^64. The pointer is stored only once it is known good.
 ; CHECK: %[[DP2:.*]] = load i64, ptr %dp
-; CHECK: %[[RIGHT:.*]] = add nsw i64 %[[DP2]], 1
+; CHECK: %[[RIGHT:.*]] = add i64 %[[DP2]], 1
+; CHECK: %[[OK1:.*]] = icmp ult i64 %[[RIGHT]], 65536
+; CHECK: br i1 %[[OK1]], label %tape.inbounds, label %tape.oob
+; CHECK: tape.inbounds:
 ; CHECK: store i64 %[[RIGHT]], ptr %dp
 
 ; Decrement operation (--)
@@ -31,9 +37,18 @@
 ; CHECK: %[[SUB:.*]] = sub i8 %[[VAL2]], 2
 ; CHECK: store i8 %[[SUB]], ptr %[[PTR2]], align 1
 
-; Move left operation (<); pointer arithmetic carries nsw.
+; Move left operation (<), checked the same way.
 ; CHECK: %[[DP4:.*]] = load i64, ptr %dp
-; CHECK: %[[LEFT:.*]] = sub nsw i64 %[[DP4]], 1
+; CHECK: %[[LEFT:.*]] = sub i64 %[[DP4]], 1
+; CHECK: %[[OK2:.*]] = icmp ult i64 %[[LEFT]], 65536
+; CHECK: br i1 %[[OK2]], label %tape.inbounds1, label %tape.oob
+
+; Every failed check branches here, and the exit status matches the one bfi
+; produces for the same condition.
+; CHECK: tape.oob:
+; CHECK: ret i32 1
+
+; CHECK: tape.inbounds1:
 ; CHECK: store i64 %[[LEFT]], ptr %dp
 
 ; Final increment operation (++)

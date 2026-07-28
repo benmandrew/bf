@@ -1,9 +1,14 @@
-; RUN: bfc --emit-cfg-dot --label-blocks res/fib.b | FileCheck test_cfg_dot.filecheck
+; RUN: bfc --emit-cfg-dot --label-blocks --unoptimised res/fib.b | FileCheck test_cfg_dot.filecheck
 ;
 ; The control-flow graph of fib.b: an entry block that conditionally
 ; branches into a loop body, which loops back to itself or falls through to
-; a terminal loop-end block. Node identifiers are pointer values, so they
-; are matched with regex ({{...}}) rather than pinned.
+; a loop-end block. Node identifiers are pointer values, so they are matched
+; with regex ({{...}}) rather than pinned.
+;
+; Every pointer move is bounds-checked, so a run of Brainfuck commands spans
+; several blocks rather than one: the tape.inbounds chain below. The source
+; span is attached to the block the run opens in, which keeps the labelled
+; blocks the same as they were before the checks existed.
 
 ; CHECK: digraph "CFG for 'main' function" {
 ; CHECK: label="CFG for 'main' function";
@@ -14,6 +19,12 @@
 ; CHECK: Node{{0x[0-9a-f]+}}:s0 -> Node{{0x[0-9a-f]+}};
 ; CHECK: Node{{0x[0-9a-f]+}}:s1 -> Node{{0x[0-9a-f]+}};
 
-; The loop body branches back to itself; the loop end is a leaf.
+; The continuation of a passing bounds check, and the shared exit every
+; failing one branches to. tape.oob is the only leaf in the graph.
+; CHECK: [shape=record,label="{tape.inbounds|{<s0>T|<s1>F}}"];
+; CHECK: [shape=record,label="{tape.oob}"];
+
+; The loop body branches back to itself. The loop end is no longer a leaf,
+; because the >> that follows the loop is itself checked.
 ; CHECK: [shape=record,label="{loop6.body {{.*}}|{<s0>T|<s1>F}}"];
-; CHECK: [shape=record,label="{loop6.end \>\>.}"];
+; CHECK: [shape=record,label="{loop6.end \>\>.|{<s0>T|<s1>F}}"];

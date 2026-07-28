@@ -47,7 +47,9 @@ build/bfi test/res/helloworld.b
 build/bfc --emit-cfg-dot --label-blocks test/res/fib.b | dot -Tpng -o cfg.png
 ```
 
-`--emit-cfg-dot` makes `bfc` emit the control flow graph as Graphviz dot instead of LLVM IR (`--cfg-instructions` includes each block's instructions). `--label-blocks` appends each block's Brainfuck source span to its name; use it without `-O`, since `simplifycfg` merges and renames blocks.
+`--emit-cfg-dot` makes `bfc` emit the control flow graph as Graphviz dot instead of LLVM IR (`--cfg-instructions` includes each block's instructions). `--label-blocks` appends each block's Brainfuck source span to its name; pair it with `-U`, since `simplifycfg` merges and renames blocks.
+
+Optimisation is on by default, and `-U`/`--unoptimised` turns it off. Every pointer move carries a bounds check against the ends of the tape, so unoptimised output is dominated by check blocks; the pipeline folds away the redundant ones. The FileCheck tests pass `--unoptimised` because they pin the shape of the IR as it is emitted.
 
 ## Common Build Targets
 
@@ -81,7 +83,7 @@ read.c  →  ir.c  →  interp.c (bfi path)
 
 **`wasm_api.c/h`** — String-returning entry points shared by the native `bfc` and the WebAssembly build: `bf_compile_ir()` and `bf_compile_cfg_dot()` take raw Brainfuck source and return the LLVM IR / CFG dot as a heap-allocated string (freed with `bf_free`). `main_bfc.c` is a thin caller that writes the string to stdout; the browser calls the same functions compiled to wasm. Keeping this the one compile path is why `emit_cfg_dot()` returns a string rather than writing to `stdout`.
 
-**`interp.c/h`** — Tree-walking interpreter. Execution state is held in `struct context_t` (program counter, data tape of `DATA_SIZE` = 65536 bytes, data pointer). `interp()` steps one command per call and returns 1 when the program completes.
+**`interp.c/h`** — Tree-walking interpreter. Execution state is held in `struct context_t` (program counter, data tape of `DATA_SIZE` = 65536 bytes, data pointer). `interp()` steps one command per call, returns 1 when the program completes, and returns -1 when a command would move the data pointer off either end of the tape. `CMD_MULTIPLY` checks every target before writing any of them, so a rejected step leaves the tape untouched.
 
 **`common.h`** — Shared constant: `DATA_SIZE 65536`.
 

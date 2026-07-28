@@ -1,4 +1,4 @@
-; RUN: %bf %s.b --emit-llvm | FileCheck %s
+; RUN: bfc --unoptimised %s.b | FileCheck %s
 
 ; Test brainfuck program with a simple loop: +++++[-]
 ; The [-] pattern is optimised to a single store of zero (CMD_CLEAR).

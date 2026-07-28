@@ -79,11 +79,14 @@ Basic blocks are named after the loop that creates them (`loop6.body`, `loop6.en
 $ scripts/cfg.sh test/res/fib.b                 # writes cfg.png
 $ scripts/cfg.sh -o fib_cfg.svg test/res/fib.b  # extension picks the format
 $ scripts/cfg.sh -i test/res/fib.b              # with each block's IR, highlighted
+$ scripts/cfg.sh -U test/res/fib.b              # unoptimised, with source-span labels
 ```
 
 `bfc --emit-cfg-dot` emits the graph as Graphviz dot directly — `-i` adds `--cfg-instructions` for the instruction-level view — so the script only chains `bfc` and `dot`, theming the graph and syntax-highlighting the IR on the way through with `highlight.py`. `scripts/cfg.sh -h` lists the remaining flags, and both scripts document how the theming works and why the highlighting follows [Prism](https://prismjs.com/)'s LLVM grammar. Because `bfc` produces the dot with the same LLVM it links against, there is no separate `opt` and no version skew to guard against.
 
-`-O` is off by default, because the `simplifycfg` pass merges and renames blocks, degrading the labels until the graph no longer mirrors the source.
+Optimisation is on by default. Every pointer move carries a bounds check against the ends of the tape, so an unoptimised graph is mostly check blocks — `fib.b` graphs as 18 of them rather than 5, and `helloworld.b` as 18 rather than 1. The pipeline folds away the ones it can prove redundant.
+
+`-U` turns optimisation off and switches `--label-blocks` on, which is the pairing worth having: `simplifycfg` merges and renames blocks, degrading the labels until the graph no longer mirrors the source, so the spans are only meaningful on an unoptimised graph. The trade is a graph that maps onto the program against one small enough to read at a glance.
 
 Loops that `optimise_program()` rewrites into `CMD_CLEAR` or `CMD_MULTIPLY` lower to straight-line code and so contribute no blocks. They appear inside a label as `[-]` and `[mul]` respectively. This rewriting is unconditional, which is why `helloworld.b` graphs as a single block.
 

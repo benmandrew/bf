@@ -1,4 +1,4 @@
-; RUN: %bf %s.b --emit-llvm | FileCheck %s
+; RUN: bfc --unoptimised %s.b | FileCheck %s
 
 ; Test multiply-loop optimisation: >+++++[<+>-]
 ; Moves dp right, sets cell[1]=5, then [<+>-] adds cell[1] into cell[0]
@@ -16,10 +16,17 @@
 ; CHECK: %dp = alloca i64, align 8
 ; CHECK: store i64 0, ptr %dp
 
-; > (move right); the pointer bump carries nsw so the index stays a clean
-; sign-extension-free i64.
+; > (move right). The bump is a wrapping add rather than nsw, because the
+; bounds check below reads its result: leaving the tape has to produce a
+; defined value, not poison. Moving left past zero wraps to near 2^64, so one
+; unsigned compare covers both ends. The pointer is stored only once it is
+; known good.
 ; CHECK: %[[DP1:.*]] = load i64, ptr %dp
-; CHECK: %[[RIGHT:.*]] = add nsw i64 %[[DP1]], 1
+; CHECK: %[[RIGHT:.*]] = add i64 %[[DP1]], 1
+; CHECK: %[[OK1:.*]] = icmp ult i64 %[[RIGHT]], 65536
+; CHECK: br i1 %[[OK1]], label %tape.inbounds, label %tape.oob
+
+; CHECK: tape.inbounds:
 ; CHECK: store i64 %[[RIGHT]], ptr %dp
 
 ; +++++ (set cell[1] = 5)
@@ -29,13 +36,23 @@
 ; CHECK: %[[ADD:.*]] = add i8 %[[VAL1]], 5
 ; CHECK: store i8 %[[ADD]], ptr %[[PTR1]], align 1
 
-; CMD_MULTIPLY {offset=-1, factor=1}: load counter (cell[1]),
-; compute cell[0] += counter * 1, zero cell[1].
+; CMD_MULTIPLY {offset=-1, factor=1}: load the counter (cell[1]), check the
+; target index, then cell[0] += counter * 1 and zero cell[1]. The check
+; precedes every write, so an out-of-range move leaves the tape untouched.
 ; CHECK: %[[DP3:.*]] = load i64, ptr %dp
 ; CHECK: %[[CPTR:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[DP3]]
 ; CHECK: %[[COUNTER:.*]] = load i8, ptr %[[CPTR]], align 1
 ; CHECK: %[[DP4:.*]] = load i64, ptr %dp
-; CHECK: %[[TIDX:.*]] = add nsw i64 %[[DP4]], -1
+; CHECK: %[[TIDX:.*]] = add i64 %[[DP4]], -1
+; CHECK: %[[OK2:.*]] = icmp ult i64 %[[TIDX]], 65536
+; CHECK: br i1 %[[OK2]], label %tape.inbounds1, label %tape.oob
+
+; Every failed check branches here, and the exit status matches the one bfi
+; produces for the same condition.
+; CHECK: tape.oob:
+; CHECK: ret i32 1
+
+; CHECK: tape.inbounds1:
 ; CHECK: %[[TPTR:.*]] = getelementptr inbounds [65536 x i8], ptr @data, i64 0, i64 %[[TIDX]]
 ; CHECK: %[[TVAL:.*]] = load i8, ptr %[[TPTR]], align 1
 ; CHECK: %[[PROD:.*]] = mul i8 %[[COUNTER]], 1

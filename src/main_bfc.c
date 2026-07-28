@@ -10,10 +10,15 @@
 void print_usage(const char *program_name) {
         printf("Usage: %s [OPTIONS] <input_file>\n", program_name);
         printf("Options:\n");
-        printf("  -O, --optimise       Enable optimisations\n");
+        printf("  -U, --unoptimised    Skip the LLVM optimisation\n");
+        printf("                       pipeline; it runs by default.\n");
+        printf("                       Without it, a bounds check splits\n");
+        printf("                       every pointer move into a block\n");
         printf(
             "  -L, --label-blocks   Append Brainfuck source spans to basic\n");
-        printf("                       block names (for CFG inspection)\n");
+        printf("                       block names (for CFG inspection).\n");
+        printf("                       Pair with -U: simplifycfg merges and\n");
+        printf("                       renames the blocks it labels\n");
         printf(
             "  -C, --emit-cfg-dot   Emit the control-flow graph as Graphviz\n");
         printf("                       dot instead of LLVM IR\n");
@@ -26,7 +31,7 @@ void print_usage(const char *program_name) {
 }
 
 static struct option long_options[] = {
-    {"optimise", no_argument, 0, 'O'},
+    {"unoptimised", no_argument, 0, 'U'},
     {"label-blocks", no_argument, 0, 'L'},
     {"emit-cfg-dot", no_argument, 0, 'C'},
     {"cfg-instructions", no_argument, 0, 'I'},
@@ -36,11 +41,11 @@ static struct option long_options[] = {
 int parse_options(int argc, char **argv, bool *optimise, bool *label_blocks,
                   bool *emit_cfg, bool *cfg_instructions, char **program) {
         int opt;
-        while ((opt = getopt_long(argc, argv, "OLCh", long_options, NULL)) !=
+        while ((opt = getopt_long(argc, argv, "ULCh", long_options, NULL)) !=
                -1) {
                 switch (opt) {
-                case 'O':
-                        *optimise = true;
+                case 'U':
+                        *optimise = false;
                         break;
                 case 'L':
                         *label_blocks = true;
@@ -86,7 +91,10 @@ int parse_options(int argc, char **argv, bool *optimise, bool *label_blocks,
 }
 
 int main(int argc, char **argv) {
-        bool optimise = false;
+        // Optimisations run unless -U asks otherwise. Every pointer move
+        // carries a bounds check, so an unoptimised control-flow graph is
+        // mostly check blocks; the pipeline folds the redundant ones away.
+        bool optimise = true;
         bool label_blocks = false;
         bool emit_cfg = false;
         bool cfg_instructions = false;

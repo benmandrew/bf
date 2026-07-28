@@ -24,9 +24,11 @@ self.onmessage = async (e) => {
     const ir = mod.ccall(
       "bf_compile_ir", "string",
       ["string", "number", "number"], [code, opt, 0]);
-    // --cfg-instructions plus --label-blocks (the flags the server passed
-    // bfc), but label-blocks only without -O: simplifycfg merges and renames
-    // blocks, so the source spans it appends would be wrong under optimisation.
+    // --cfg-instructions always, plus --label-blocks only when optimisation
+    // is off: simplifycfg merges and renames blocks, so the source spans it
+    // appends would be wrong under optimisation. Optimisation defaults on
+    // here as it does in bfc, because every pointer move carries a bounds
+    // check and an unoptimised graph is mostly check blocks.
     const dot = mod.ccall(
       "bf_compile_cfg_dot", "string",
       ["string", "number", "number", "number"], [code, opt, opt ? 0 : 1, 1]);

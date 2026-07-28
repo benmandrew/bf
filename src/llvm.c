@@ -67,10 +67,19 @@ struct llvm_context {
         struct llvm_jump_stack js;
         struct llvm_function putchar;
         struct llvm_function getchar;
+        /// Shared exit block returning 1 when a tape index leaves the tape.
+        /// Created on first use, so programs that cannot leave the tape after
+        /// optimisation carry no extra block.
+        LLVMBasicBlockRef oob;
         /// Append Brainfuck source spans to block names.
         bool label_blocks;
-        /// Index of the first command in the block currently being built.
+        /// Index of the first command in the span currently being built.
         size_t block_start_cmd;
+        /// Block the current span started in. A span runs until the next
+        /// bracket, but a bounds check splits it across several blocks, so the
+        /// label belongs to the block the span opened in rather than whichever
+        /// one it happens to end in.
+        LLVMBasicBlockRef span_block;
 };
 
 static LLVMTypeRef int32_type(struct llvm_context *ctx) {
@@ -129,6 +138,7 @@ struct llvm_context create_module_preamble(struct program *program,
         struct llvm_context ctx;
         ctx.label_blocks = label_blocks;
         ctx.block_start_cmd = 0;
+        ctx.oob = NULL;
         ctx.context = LLVMContextCreate();
         ctx.module = LLVMModuleCreateWithNameInContext(name, ctx.context);
         ctx.builder = LLVMCreateBuilderInContext(ctx.context);
@@ -160,9 +170,38 @@ void create_main_function(struct llvm_context *ctx) {
         LLVMBasicBlockRef entry_block =
             LLVMAppendBasicBlockInContext(ctx->context, ctx->main, "entry");
         LLVMPositionBuilderAtEnd(ctx->builder, entry_block);
+        ctx->span_block = entry_block;
         ctx->dp = LLVMBuildAlloca(ctx->builder, index_type(ctx), "dp");
         LLVMBuildStore(ctx->builder, LLVMConstInt(index_type(ctx), 0, 0),
                        ctx->dp);
+}
+
+/// The block every failed bounds check branches to. It returns 1, matching the
+/// exit status bfi produces for the same condition.
+static LLVMBasicBlockRef oob_block(struct llvm_context *ctx) {
+        if (ctx->oob == NULL) {
+                LLVMBasicBlockRef current = LLVMGetInsertBlock(ctx->builder);
+                ctx->oob = LLVMAppendBasicBlockInContext(ctx->context,
+                                                         ctx->main, "tape.oob");
+                LLVMPositionBuilderAtEnd(ctx->builder, ctx->oob);
+                LLVMBuildRet(ctx->builder, LLVMConstInt(int32_type(ctx), 1, 0));
+                LLVMPositionBuilderAtEnd(ctx->builder, current);
+        }
+        return ctx->oob;
+}
+
+/// Continue only when `index` is a valid tape index, otherwise leave for
+/// oob_block(). A single unsigned comparison covers both ends: moving left past
+/// zero wraps to near 2^64, which is not less than DATA_SIZE either. Leaves the
+/// builder positioned in the continuation block.
+static void emit_bounds_check(struct llvm_context *ctx, LLVMValueRef index) {
+        LLVMValueRef in_range =
+            LLVMBuildICmp(ctx->builder, LLVMIntULT, index,
+                          LLVMConstInt(index_type(ctx), DATA_SIZE, 0), "");
+        LLVMBasicBlockRef cont = LLVMAppendBasicBlockInContext(
+            ctx->context, ctx->main, "tape.inbounds");
+        LLVMBuildCondBr(ctx->builder, in_range, cont, oob_block(ctx));
+        LLVMPositionBuilderAtEnd(ctx->builder, cont);
 }
 
 LLVMValueRef get_dataptr(struct llvm_context *ctx) {
@@ -195,12 +234,17 @@ void sub(struct llvm_context *ctx, size_t value) {
         LLVMBuildStore(ctx->builder, new_value, data_ptr);
 }
 
+// The moves below deliberately use wrapping add and subtract rather than their
+// NSW forms: the bounds check reads the result, so overflow has to be a defined
+// value rather than poison. The pointer is stored only once it is known good.
+
 void right(struct llvm_context *ctx, size_t value) {
         LLVMValueRef dp_value =
             LLVMBuildLoad2(ctx->builder, index_type(ctx), ctx->dp, "");
         LLVMValueRef new_dp =
-            LLVMBuildNSWAdd(ctx->builder, dp_value,
-                            LLVMConstInt(index_type(ctx), value, 0), "");
+            LLVMBuildAdd(ctx->builder, dp_value,
+                         LLVMConstInt(index_type(ctx), value, 0), "");
+        emit_bounds_check(ctx, new_dp);
         LLVMBuildStore(ctx->builder, new_dp, ctx->dp);
 }
 
@@ -208,8 +252,9 @@ void left(struct llvm_context *ctx, size_t value) {
         LLVMValueRef dp_value =
             LLVMBuildLoad2(ctx->builder, index_type(ctx), ctx->dp, "");
         LLVMValueRef new_dp =
-            LLVMBuildNSWSub(ctx->builder, dp_value,
-                            LLVMConstInt(index_type(ctx), value, 0), "");
+            LLVMBuildSub(ctx->builder, dp_value,
+                         LLVMConstInt(index_type(ctx), value, 0), "");
+        emit_bounds_check(ctx, new_dp);
         LLVMBuildStore(ctx->builder, new_dp, ctx->dp);
 }
 
@@ -257,15 +302,26 @@ void multiply(struct llvm_context *ctx, struct multiply_move *moves,
         LLVMValueRef counter_ptr = get_dataptr(ctx);
         LLVMValueRef counter =
             LLVMBuildLoad2(ctx->builder, int8_type(ctx), counter_ptr, "");
+        // The data pointer does not move during a multiply, so load it once and
+        // derive every target from it.
+        LLVMValueRef dp_value =
+            LLVMBuildLoad2(ctx->builder, index_type(ctx), ctx->dp, "");
+        assert(n_moves <= MULTIPLY_MOVES_MAX);
+        LLVMValueRef target_idx[MULTIPLY_MOVES_MAX];
         for (size_t i = 0; i < n_moves; i++) {
-                LLVMValueRef dp_value =
-                    LLVMBuildLoad2(ctx->builder, index_type(ctx), ctx->dp, "");
                 LLVMValueRef offset =
                     LLVMConstInt(index_type(ctx), (uint64_t)moves[i].offset, 1);
-                LLVMValueRef target_idx =
-                    LLVMBuildNSWAdd(ctx->builder, dp_value, offset, "");
+                target_idx[i] =
+                    LLVMBuildAdd(ctx->builder, dp_value, offset, "");
+        }
+        // Check every target before writing any of them, so an out-of-bounds
+        // move leaves the tape untouched, as interp.c does.
+        for (size_t i = 0; i < n_moves; i++) {
+                emit_bounds_check(ctx, target_idx[i]);
+        }
+        for (size_t i = 0; i < n_moves; i++) {
                 LLVMValueRef indices[] = {LLVMConstInt(index_type(ctx), 0, 0),
-                                          target_idx};
+                                          target_idx[i]};
                 LLVMValueRef target_ptr =
                     LLVMBuildInBoundsGEP2(ctx->builder, data_array_type(ctx),
                                           ctx->data, indices, 2, "");
@@ -299,8 +355,8 @@ static void finish_block(struct llvm_context *ctx, struct program *program,
                 program_range_to_label(program, ctx->block_start_cmd, end_cmd,
                                        bf, sizeof(bf));
                 if (bf[0] != '\0') {
-                        LLVMValueRef block = LLVMBasicBlockAsValue(
-                            LLVMGetInsertBlock(ctx->builder));
+                        LLVMValueRef block =
+                            LLVMBasicBlockAsValue(ctx->span_block);
                         size_t prefix_len = 0;
                         const char *prefix =
                             LLVMGetValueName2(block, &prefix_len);
@@ -311,6 +367,8 @@ static void finish_block(struct llvm_context *ctx, struct program *program,
                 }
         }
         ctx->block_start_cmd = end_cmd + 1;
+        // The next span opens wherever the bracket that follows leaves the
+        // builder, which left_bracket and right_bracket record for us.
 }
 
 void left_bracket(struct llvm_context *ctx, size_t cmd_index) {
@@ -333,6 +391,7 @@ void left_bracket(struct llvm_context *ctx, size_t cmd_index) {
         jump_stack_push(&ctx->js, entry, exit);
         LLVMBuildCondBr(ctx->builder, condition, entry, exit);
         LLVMPositionBuilderAtEnd(ctx->builder, entry);
+        ctx->span_block = entry;
 }
 
 void right_bracket(struct llvm_context *ctx) {
@@ -345,6 +404,7 @@ void right_bracket(struct llvm_context *ctx) {
                           LLVMConstInt(int8_type(ctx), 0, 0), "");
         LLVMBuildCondBr(ctx->builder, condition, pair.entry, pair.exit);
         LLVMPositionBuilderAtEnd(ctx->builder, pair.exit);
+        ctx->span_block = pair.exit;
 }
 
 LLVMModuleRef generate(struct program *program, bool optimise,

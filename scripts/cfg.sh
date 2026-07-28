@@ -20,30 +20,34 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
 usage() {
     cat <<'EOF'
-Usage: scripts/cfg.sh [-b BUILD_DIR] [-o OUTPUT] [-i] [-O] INPUT.b
+Usage: scripts/cfg.sh [-b BUILD_DIR] [-o OUTPUT] [-i] [-U] INPUT.b
 
   -b BUILD_DIR  Directory containing bfc (default: build)
   -o OUTPUT     Output image; format is taken from the extension,
                 either .png or .svg (default: cfg.png)
   -i            Include each block's LLVM instructions in the graph
                 (bfc --cfg-instructions)
-  -O            Run bfc with -O. Off by default: simplifycfg merges and
-                renames blocks, degrading the source-span labels.
+  -U            Run bfc with -U, skipping optimisation. Optimisation
+                is on by default, because every pointer move carries a
+                bounds check and unoptimised the graph is mostly check
+                blocks. -U also turns on --label-blocks, which only means
+                anything unoptimised: simplifycfg merges and renames the
+                blocks whose names carry the source spans.
   -h            Show this help message
 EOF
 }
 
 BUILD_DIR=build
 OUTPUT=cfg.png
-OPTIMISE=()
+UNOPTIMISE=()
 INSTRUCTIONS=()
 
-while getopts "b:o:iOh" opt; do
+while getopts "b:o:iUh" opt; do
     case "${opt}" in
         b) BUILD_DIR="${OPTARG}" ;;
         o) OUTPUT="${OPTARG}" ;;
         i) INSTRUCTIONS=(--cfg-instructions) ;;
-        O) OPTIMISE=(-O) ;;
+        U) UNOPTIMISE=(--unoptimised) ;;
         h)
             usage
             exit 0
@@ -100,8 +104,15 @@ trap 'rm -rf "${WORK}"' EXIT
 DOT="${WORK}/cfg.dot"
 # The [@]+ guards let empty arrays expand to nothing under `set -u`, which
 # the macOS system bash (3.2) needs; a bare "${arr[@]}" errors there.
+# Source-span labels survive only without optimisation, so they ride along
+# with -U rather than being requested separately.
+LABEL=()
+if [ ${#UNOPTIMISE[@]} -ne 0 ]; then
+    LABEL=(--label-blocks)
+fi
 "${BFC}" --emit-cfg-dot ${INSTRUCTIONS[@]+"${INSTRUCTIONS[@]}"} \
-    --label-blocks ${OPTIMISE[@]+"${OPTIMISE[@]}"} "${INPUT}" >"${DOT}"
+    ${LABEL[@]+"${LABEL[@]}"} ${UNOPTIMISE[@]+"${UNOPTIMISE[@]}"} \
+    "${INPUT}" >"${DOT}"
 
 # Theme the graph and syntax-highlight the IR. Doing this in Python
 # rather than sed is what buys per-token colour: record labels cannot
