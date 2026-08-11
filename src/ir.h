@@ -74,10 +74,6 @@ size_t program_str_length(struct program *program);
 /// @return Parsed program with heap-allocated command array.
 struct program string_to_program(char *source_str);
 
-/// Release a program's heap-allocated command buffer.
-/// @param program Program whose command array should be released.
-void free_program(struct program *program);
-
 /// Map a command type back to its Brainfuck character.
 /// @param command_type Command type.
 /// @return Corresponding Brainfuck symbol.
@@ -109,11 +105,6 @@ char program_contains_output(struct program *program);
 /// @param program Parsed program.
 /// @return 1 if input exists; otherwise 0.
 char program_contains_input(struct program *program);
-
-/// Validate that a source string contains only balanced Brainfuck commands.
-/// @param source_str Source string to validate.
-/// @return 1 if valid; otherwise 0.
-char program_is_valid(char *source_str);
 
 /// Apply IR-level optimisations to a parsed program in-place.
 /// @param program Program to optimise.
