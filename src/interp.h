@@ -33,7 +33,7 @@ struct context_t init_context(struct program program);
 /// @param byte_output If true, emit numeric byte values.
 /// @return 1 when execution completes normally, -1 if the tape pointer moves
 ///         out of bounds, 0 while still executing.
-int interp(struct context_t *ctx, int, int, bool);
+int interp(struct context_t *ctx, int out_fd, int in_fd, bool byte_output);
 
 /// Render the current interpreter state as a human-readable trace string.
 /// @param ctx Interpreter context to render.
