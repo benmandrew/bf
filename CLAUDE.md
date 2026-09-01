@@ -29,7 +29,7 @@ cmake -B build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build build-release           # release build, no sanitizers
 ```
 
-After building, `bfc` and `bfi` are in the build directory.
+After building, `bfc` and `bfi` are in the build directory. The README writes them bare, assuming `build` is on PATH; commands here use `build/bfc` so they run as written.
 
 ```bash
 # Compile a .b file to binary via LLVM IR

@@ -5,7 +5,7 @@ A compiler frontend for the [bf language](https://en.wikipedia.org/wiki/Brainfuc
 You can interact with it online [here](https://benmandrew.com/articles/compiler-frontend), or self-host the web interface — which shows the bf source, the compiled LLVM IR, and its control flow graph side by side. The demo runs entirely in the browser: `bfc` is built to WebAssembly and compiles client-side, with no backend. Build the static bundle and serve it locally:
 
 ```bash
-$ scripts/build-wasm.sh                               # web/wasm/bfc.{mjs,wasm} — needs the Emscripten SDK
+$ nix develop -c scripts/build-wasm.sh                # -> web/wasm/bfc.{mjs,wasm}
 $ nix develop -c cmake -B build
 $ nix develop -c cmake --build build --target site    # -> build/site/
 $ cd build/site && nix develop -c python3 -m http.server 8080
@@ -15,7 +15,7 @@ Then open [`http://localhost:8080`](http://localhost:8080). The control flow gra
 
 The input validation and parsing functionality is formally verified to be memory safe for inputs up to thirteen commands long. Details are in [MODELCHECKING.md](MODELCHECKING.md).
 
-![alt](docs/screenshot.png)
+![The web demo: bf source, compiled LLVM IR, and control flow graph side by side](docs/screenshot.png)
 
 ## Dependencies
 
@@ -53,7 +53,7 @@ $ cmake --build build
 
 After building, the `bfc` (compiler) and `bfi` (interpreter) executables will be in the `build` directory.
 
-To compile a `bf` program to a binary executable:
+To compile a bf program to a binary executable:
 
 ```bash
 # Generate LLVM IR
@@ -64,7 +64,7 @@ $ ./main
 Hello, World!
 ```
 
-To execute a `bf` program with the interpreter:
+To execute a bf program with the interpreter:
 
 ```bash
 $ bfi test/res/helloworld.b
@@ -84,11 +84,7 @@ $ scripts/cfg.sh -U test/res/fib.b              # unoptimised, with source-span 
 
 `bfc --emit-cfg-dot` emits the graph as Graphviz dot directly — `-i` adds `--cfg-instructions` for the instruction-level view — so the script only chains `bfc` and `dot`, theming the graph and syntax-highlighting the IR on the way through with `highlight.py`. `scripts/cfg.sh -h` lists the remaining flags, and both scripts document how the theming works and why the highlighting follows [Prism](https://prismjs.com/)'s LLVM grammar. Because `bfc` produces the dot with the same LLVM it links against, there is no separate `opt` and no version skew to guard against.
 
-Optimisation is on by default. Every pointer move carries a bounds check against the ends of the tape, so an unoptimised graph is mostly check blocks — `fib.b` graphs as 18 of them rather than 5, and `helloworld.b` as 18 rather than 1. The pipeline folds away the ones it can prove redundant.
-
-`-U` turns optimisation off and switches `--label-blocks` on, which is the pairing worth having: `simplifycfg` merges and renames blocks, degrading the labels until the graph no longer mirrors the source, so the spans are only meaningful on an unoptimised graph. The trade is a graph that maps onto the program against one small enough to read at a glance.
-
-Loops that `optimise_program()` rewrites into `CMD_CLEAR` or `CMD_MULTIPLY` lower to straight-line code and so contribute no blocks. They appear inside a label as `[-]` and `[mul]` respectively. This rewriting is unconditional, which is why `helloworld.b` graphs as a single block.
+`-U` turns optimisation off and switches `--label-blocks` on, and the two belong together: `simplifycfg` merges and renames blocks, so source spans only mean anything on an unoptimised graph. That graph is much bigger, since `fib.b` draws 18 bounds-check blocks rather than 5 — see [`docs/OPTIMISATION.md`](docs/OPTIMISATION.md) for what the optimiser folds away.
 
 ### Formatting and Linting
 

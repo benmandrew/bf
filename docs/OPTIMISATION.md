@@ -73,6 +73,26 @@ $ printf '+.+.' | bfc -O | grep '@data'
 The 65536-byte global has become a single `i8`, and the cell is no longer
 reloaded between the two `putchar` calls.
 
+## What the graph shows
+
+`bfc --emit-cfg-dot` draws the module's *control flow graph* (CFG), which
+`scripts/cfg.sh` renders, and the graph makes the effect of these passes visible
+block by block. Optimisation is on by default. Every pointer move carries a
+bounds check against the ends of the tape, so an unoptimised graph is mostly
+check blocks — `fib.b` graphs as 18 of them rather than 5, and `helloworld.b` as
+18 rather than 1. The pipeline folds away the ones it can prove redundant.
+
+`-U` turns optimisation off and switches `--label-blocks` on, which is the
+pairing worth having. `--label-blocks` appends the span of bf source each block
+covers, and `simplifycfg` merges and renames blocks, degrading those labels until
+the graph no longer mirrors the source. The trade is a graph that maps onto the
+program against one small enough to read at a glance.
+
+Loops that `optimise_program()` rewrites into `CMD_CLEAR` or `CMD_MULTIPLY` lower
+to straight-line code and so contribute no blocks. They appear inside a label as
+`[-]` and `[mul]` respectively. This rewriting is unconditional, which is why
+`helloworld.b` graphs as a single block.
+
 ## The in-bounds contract
 
 These hints assume the data pointer stays within `[0, 65536)`. `bfc` emits no
@@ -83,6 +103,6 @@ the tape bounds are unaffected; this only sharpens what the compiler is entitled
 to assume.
 
 One category of arithmetic is deliberately left un-flagged. Cell updates (`+`,
-`-`) stay wrapping `i8` operations with no `nsw`/`nuw`, because bf cells
-wrap modulo 256 by definition. Only the pointer arithmetic is promised not to
+`-`) stay wrapping `i8` operations with no `nsw`/`nuw`, because bf cells wrap
+modulo 256 by definition. Only the pointer arithmetic is promised not to
 overflow.
