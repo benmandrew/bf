@@ -32,7 +32,7 @@ struct ReadReturn {
         union ProgramOrError value;
 };
 
-/// Remove non-Brainfuck characters from a mutable source buffer.
+/// Remove non-bf characters from a mutable source buffer.
 /// @param source_str Null-terminated source buffer to clean in place.
 void clean_whitespace(char *source_str);
 

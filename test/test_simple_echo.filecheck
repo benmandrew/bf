@@ -1,6 +1,6 @@
 ; RUN: bfc --unoptimised %s.b | FileCheck %s
 
-; Test brainfuck program that echoes a character: ,.
+; Test bf program that echoes a character: ,.
 
 ; CHECK: ; ModuleID = 'main'
 ; CHECK: source_filename = "main"

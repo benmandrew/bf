@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Brainfuck-to-LLVM-IR compiler frontend written in C17. Produces two executables:
+A bf-to-LLVM-IR compiler frontend written in C17. Produces two executables:
 
 - **`bfc`** — compiler: reads `.b` files (or stdin), emits LLVM IR to stdout, or the control flow graph as Graphviz dot with `--emit-cfg-dot`
 - **`bfi`** — interpreter: reads `.b` files and executes them directly
@@ -47,7 +47,7 @@ build/bfi test/res/helloworld.b
 build/bfc --emit-cfg-dot --label-blocks test/res/fib.b | dot -Tpng -o cfg.png
 ```
 
-`--emit-cfg-dot` makes `bfc` emit the control flow graph as Graphviz dot instead of LLVM IR (`--cfg-instructions` includes each block's instructions). `--label-blocks` appends each block's Brainfuck source span to its name; pair it with `-U`, since `simplifycfg` merges and renames blocks.
+`--emit-cfg-dot` makes `bfc` emit the control flow graph as Graphviz dot instead of LLVM IR (`--cfg-instructions` includes each block's instructions). `--label-blocks` appends each block's bf source span to its name; pair it with `-U`, since `simplifycfg` merges and renames blocks.
 
 Optimisation is on by default, and `-U`/`--unoptimised` turns it off. Every pointer move carries a bounds check against the ends of the tape, so unoptimised output is dominated by check blocks; the pipeline folds away the redundant ones. The FileCheck tests pass `--unoptimised` because they pin the shape of the IR as it is emitted.
 
@@ -73,7 +73,7 @@ read.c  →  ir.c  →  llvm.c   (bfc path)
 read.c  →  ir.c  →  interp.c (bfi path)
 ```
 
-**`read.c/h`** — Input validation and normalisation. `clean_whitespace()` strips non-BF characters in-place. `read_file()` and `validate()` both return a tagged `struct ReadReturn` (discriminated union: `OK` with `char *program_str` or `ERROR` with `struct Error`). This module is formally verified for memory safety up to 13-command inputs via CBMC (see `MODELCHECKING.md`).
+**`read.c/h`** — Input validation and normalisation. `clean_whitespace()` strips non-bf characters in-place. `read_file()` and `validate()` both return a tagged `struct ReadReturn` (discriminated union: `OK` with `char *program_str` or `ERROR` with `struct Error`). This module is formally verified for memory safety up to 13-command inputs via CBMC (see `MODELCHECKING.md`).
 
 **`ir.c/h`** — Parsing into the internal IR. `string_to_program()` converts a cleaned source string into a `struct program` — a heap-allocated array of `struct cmd`. The IR compresses consecutive identical simple commands into a single entry with a `simple_count` field, and pre-computes matching bracket indices stored in `jump_index` (no runtime bracket matching needed during execution).
 
@@ -81,7 +81,7 @@ read.c  →  ir.c  →  interp.c (bfi path)
 
 **`cfg_dot.cpp/h`** — Control-flow-graph emission, behind `bfc --emit-cfg-dot`. `emit_cfg_dot()` writes the module's CFG as Graphviz dot via LLVM's C++ `WriteGraph`. The project's only C++ translation unit, so the devShell builds with the wrapped-clang stdenv (see `flake.nix`).
 
-**`wasm_api.c/h`** — String-returning entry points shared by the native `bfc` and the WebAssembly build: `bf_compile_ir()` and `bf_compile_cfg_dot()` take raw Brainfuck source and return the LLVM IR / CFG dot as a heap-allocated string (freed with `bf_free`). `main_bfc.c` is a thin caller that writes the string to stdout; the browser calls the same functions compiled to wasm. Keeping this the one compile path is why `emit_cfg_dot()` returns a string rather than writing to `stdout`.
+**`wasm_api.c/h`** — String-returning entry points shared by the native `bfc` and the WebAssembly build: `bf_compile_ir()` and `bf_compile_cfg_dot()` take raw bf source and return the LLVM IR / CFG dot as a heap-allocated string (freed with `bf_free`). `main_bfc.c` is a thin caller that writes the string to stdout; the browser calls the same functions compiled to wasm. Keeping this the one compile path is why `emit_cfg_dot()` returns a string rather than writing to `stdout`.
 
 **`interp.c/h`** — Tree-walking interpreter. Execution state is held in `struct context_t` (program counter, data tape of `DATA_SIZE` = 65536 bytes, data pointer). `interp()` steps one command per call, returns 1 when the program completes, and returns -1 when a command would move the data pointer off either end of the tape. `CMD_MULTIPLY` checks every target before writing any of them, so a rejected step leaves the tape untouched.
 

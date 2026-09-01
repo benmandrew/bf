@@ -1,8 +1,8 @@
-# Brainf*ck to LLVM IR Compiler Frontend
+# bf to LLVM IR Compiler Frontend
 
-A compiler frontend for the [Brainf*ck language](https://en.wikipedia.org/wiki/Brainfuck) that outputs code in LLVM Intermediate Representation (IR), which can then be compiled to any desired target architecture with `clang`.
+A compiler frontend for the [bf language](https://en.wikipedia.org/wiki/Brainfuck) that outputs code in LLVM Intermediate Representation (IR), which can then be compiled to any desired target architecture with `clang`.
 
-You can interact with it online [here](https://benmandrew.com/articles/compiler-frontend), or self-host the web interface — which shows the Brainf*ck source, the compiled LLVM IR, and its control flow graph side by side. The demo runs entirely in the browser: `bfc` is built to WebAssembly and compiles client-side, with no backend. Build the static bundle and serve it locally:
+You can interact with it online [here](https://benmandrew.com/articles/compiler-frontend), or self-host the web interface — which shows the bf source, the compiled LLVM IR, and its control flow graph side by side. The demo runs entirely in the browser: `bfc` is built to WebAssembly and compiles client-side, with no backend. Build the static bundle and serve it locally:
 
 ```bash
 $ scripts/build-wasm.sh                               # web/wasm/bfc.{mjs,wasm} — needs the Emscripten SDK
@@ -73,7 +73,7 @@ Hello, World!
 
 ### Visualising the Control Flow Graph
 
-Basic blocks are named after the loop that creates them (`loop6.body`, `loop6.end`). Passing `--label-blocks` additionally appends the span of Brainf*ck source each block covers, which is enough to read a *control flow graph* (CFG) back against the original program:
+Basic blocks are named after the loop that creates them (`loop6.body`, `loop6.end`). Passing `--label-blocks` additionally appends the span of bf source each block covers, which is enough to read a *control flow graph* (CFG) back against the original program:
 
 ```bash
 $ scripts/cfg.sh test/res/fib.b                 # writes cfg.png

@@ -83,6 +83,6 @@ the tape bounds are unaffected; this only sharpens what the compiler is entitled
 to assume.
 
 One category of arithmetic is deliberately left un-flagged. Cell updates (`+`,
-`-`) stay wrapping `i8` operations with no `nsw`/`nuw`, because Brainfuck cells
+`-`) stay wrapping `i8` operations with no `nsw`/`nuw`, because bf cells
 wrap modulo 256 by definition. Only the pointer arithmetic is promised not to
 overflow.

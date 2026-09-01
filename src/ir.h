@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-/// Brainfuck command categories used by the internal IR.
+/// bf command categories used by the internal IR.
 enum cmd_type {
         /// `'+'`: increment current cell value.
         CMD_SIMPLE_INC,
@@ -38,7 +38,7 @@ struct multiply_move {
         int factor;
 };
 
-/// One compressed instruction in the internal Brainfuck IR.
+/// One compressed instruction in the internal bf IR.
 struct cmd {
         /// Command opcode.
         enum cmd_type type;
@@ -56,7 +56,7 @@ struct cmd {
         } value;
 };
 
-/// Parsed Brainfuck program represented as an array of commands.
+/// Parsed bf program represented as an array of commands.
 struct program {
         /// Heap-allocated command array.
         struct cmd *cmds;
@@ -64,27 +64,27 @@ struct program {
         size_t length;
 };
 
-/// Compute the length of the flattened Brainfuck source string.
+/// Compute the length of the flattened bf source string.
 /// @param program Parsed program.
-/// @return Length of expanded Brainfuck source string.
+/// @return Length of expanded bf source string.
 size_t program_str_length(struct program *program);
 
-/// Parse a cleaned Brainfuck string into the internal program form.
-/// @param source_str Cleaned Brainfuck source string.
+/// Parse a cleaned bf string into the internal program form.
+/// @param source_str Cleaned bf source string.
 /// @return Parsed program with heap-allocated command array.
 struct program string_to_program(char *source_str);
 
-/// Map a command type back to its Brainfuck character.
+/// Map a command type back to its bf character.
 /// @param command_type Command type.
-/// @return Corresponding Brainfuck symbol.
+/// @return Corresponding bf symbol.
 char cmd_type_to_char(enum cmd_type command_type);
 
-/// Expand a compressed program back into a Brainfuck source string.
+/// Expand a compressed program back into a bf source string.
 /// @param program Parsed program.
 /// @return Heap-allocated source string; caller must free it.
 char *program_to_string(struct program *program);
 
-/// Render a command range as a bounded Brainfuck snippet for use in a label.
+/// Render a command range as a bounded bf snippet for use in a label.
 /// Unlike program_to_string(), synthetic commands are rendered rather than
 /// skipped (CMD_CLEAR as `[-]`, CMD_MULTIPLY as `[mul]`), and output longer
 /// than `out_size` is truncated with a trailing `...`.

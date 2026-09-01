@@ -7,7 +7,7 @@
 #include "common.h"
 #include "ir.h"
 
-/// Mutable execution state for the Brainfuck interpreter.
+/// Mutable execution state for the bf interpreter.
 struct context_t {
         /// Current command index in `program.cmds`.
         size_t pc;
@@ -22,7 +22,7 @@ struct context_t {
 };
 
 /// Initialize an interpreter context with the program loaded at pc zero.
-/// @param program Parsed Brainfuck program to execute.
+/// @param program Parsed bf program to execute.
 /// @return Initialized interpreter context with zeroed tape.
 struct context_t init_context(struct program program);
 

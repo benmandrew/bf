@@ -50,7 +50,7 @@ jump_stack_pop(struct llvm_jump_stack *jump_stack) {
         return jump_stack->stack[jump_stack->head];
 }
 
-/// Buffer size for the Brainfuck snippet appended to a block name, including
+/// Buffer size for the bf snippet appended to a block name, including
 /// the terminator.
 #define BF_LABEL_MAX (32)
 
@@ -71,7 +71,7 @@ struct llvm_context {
         /// Created on first use, so programs that cannot leave the tape after
         /// optimisation carry no extra block.
         LLVMBasicBlockRef oob;
-        /// Append Brainfuck source spans to block names.
+        /// Append bf source spans to block names.
         bool label_blocks;
         /// Index of the first command in the span currently being built.
         size_t block_start_cmd;
@@ -346,7 +346,7 @@ void clear(struct llvm_context *ctx) {
 }
 
 /// Close off the block under construction, which spans commands
-/// [block_start_cmd, end_cmd). When labelling is enabled, its Brainfuck source
+/// [block_start_cmd, end_cmd). When labelling is enabled, its bf source
 /// span is appended to the structural name assigned at creation.
 static void finish_block(struct llvm_context *ctx, struct program *program,
                          size_t end_cmd) {

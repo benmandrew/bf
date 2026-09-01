@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Render the control flow graph of a Brainfuck program.
+# Render the control flow graph of a bf program.
 #
 # Pipeline: bfc --emit-cfg-dot -> highlight.py -> dot
 #

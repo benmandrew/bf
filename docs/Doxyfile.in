@@ -1,5 +1,5 @@
 PROJECT_NAME = "bf"
-PROJECT_BRIEF = "Brainf*ck to LLVM IR compiler frontend"
+PROJECT_BRIEF = "bf to LLVM IR compiler frontend"
 OUTPUT_DIRECTORY = @DOXYGEN_OUTPUT_DIR@
 INPUT = @DOXYGEN_INPUT_DIR@
 FILE_PATTERNS = *.h *.c

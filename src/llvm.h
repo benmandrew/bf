@@ -7,10 +7,10 @@
 
 #include "ir.h"
 
-/// Generate LLVM IR for a parsed Brainfuck program.
-/// @param program Parsed Brainfuck program.
+/// Generate LLVM IR for a parsed bf program.
+/// @param program Parsed bf program.
 /// @param optimise Run the LLVM `default<O2>` optimisation pipeline.
-/// @param label_blocks Append each basic block's Brainfuck source span to its
+/// @param label_blocks Append each basic block's bf source span to its
 ///                     name. Intended for CFG inspection; `optimise` merges and
 ///                     renames blocks, so the two are rarely useful together.
 /// @return Generated LLVM module.

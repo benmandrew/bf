@@ -1,6 +1,6 @@
 # Web demo
 
-The demo compiles Brainfuck to LLVM IR and to its control-flow graph entirely
+The demo compiles bf to LLVM IR and to its control-flow graph entirely
 in the browser. `bfc` is built to WebAssembly (wasm), so there is no backend:
 the page is a bundle of static files that any static host can serve.
 

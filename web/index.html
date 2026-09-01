@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Brainfuck to LLVM IR</title>
+  <title>bf to LLVM IR</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="prism.css">
@@ -11,7 +11,7 @@
 
 <body>
   <div id="topbar">
-    <div class="left">Brainfuck → LLVM IR</div>
+    <div class="left">bf → LLVM IR</div>
     <div class="right">
       <label id="optToggle" title="Run the LLVM optimisation pipeline before emitting IR and the CFG. On by default: every pointer move carries a bounds check, and unoptimised the graph is mostly check blocks">
         <input type="checkbox" id="optimise" checked> Optimise
@@ -22,8 +22,8 @@
 
   <main id="split">
     <section class="pane" id="leftPane">
-      <header>Brainfuck</header>
-      <textarea id="bfEditor" spellcheck="false" aria-label="Brainfuck editor" placeholder="Type brainfuck code here..."></textarea>
+      <header>bf</header>
+      <textarea id="bfEditor" spellcheck="false" aria-label="bf editor" placeholder="Type bf code here..."></textarea>
       <div class="footer">Tip: press <strong>Ctrl/Cmd+Enter</strong> to compile</div>
     </section>
 

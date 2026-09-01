@@ -14,8 +14,7 @@ void print_usage(const char *program_name) {
         printf("                       pipeline; it runs by default.\n");
         printf("                       Without it, a bounds check splits\n");
         printf("                       every pointer move into a block\n");
-        printf(
-            "  -L, --label-blocks   Append Brainfuck source spans to basic\n");
+        printf("  -L, --label-blocks   Append bf source spans to basic\n");
         printf("                       block names (for CFG inspection).\n");
         printf("                       Pair with -U: simplifycfg merges and\n");
         printf("                       renames the blocks it labels\n");
@@ -27,7 +26,7 @@ void print_usage(const char *program_name) {
                "graph\n");
         printf("  -h, --help           Show this help message\n");
         printf("\nArguments:\n");
-        printf("  input_file           Brainfuck source file to compile\n");
+        printf("  input_file           bf source file to compile\n");
 }
 
 static struct option long_options[] = {

@@ -1,7 +1,7 @@
 // Regenerate docs/screenshot.png, the README image of the web UI.
 //
 // Drives a running instance with Playwright and captures the three-pane
-// layout (Brainfuck, LLVM IR, control flow graph). The viewport and device
+// layout (bf, LLVM IR, control flow graph). The viewport and device
 // scale factor are chosen to reproduce the committed 3000x1640 image.
 //
 // Prerequisites:

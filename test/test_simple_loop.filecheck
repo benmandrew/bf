@@ -1,6 +1,6 @@
 ; RUN: bfc --unoptimised %s.b | FileCheck %s
 
-; Test brainfuck program with a simple loop: +++++[-]
+; Test bf program with a simple loop: +++++[-]
 ; The [-] pattern is optimised to a single store of zero (CMD_CLEAR).
 
 ; CHECK: ; ModuleID = 'main'

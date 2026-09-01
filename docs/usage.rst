@@ -41,13 +41,13 @@ Build the project with CMake:
 
 After building, both executables are available in the ``build`` directory:
 
-- ``bfc``: Brainfuck frontend that emits LLVM IR
-- ``bfi``: Brainfuck interpreter
+- ``bfc``: bf frontend that emits LLVM IR
+- ``bfi``: bf interpreter
 
 Use ``bfc`` (compile to LLVM IR)
 --------------------------------
 
-Generate LLVM IR from a Brainfuck program and compile it with ``clang``:
+Generate LLVM IR from a bf program and compile it with ``clang``:
 
 .. code-block:: bash
 
@@ -61,7 +61,7 @@ Generate LLVM IR from a Brainfuck program and compile it with ``clang``:
 Use ``bfi`` (interpret directly)
 --------------------------------
 
-Run a Brainfuck program directly with the interpreter:
+Run a bf program directly with the interpreter:
 
 .. code-block:: bash
 

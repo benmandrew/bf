@@ -1,6 +1,6 @@
 // Compile worker: runs the whole pipeline off the main thread.
 //
-// bfc, compiled to WebAssembly, turns Brainfuck into LLVM IR and into the
+// bfc, compiled to WebAssembly, turns bf into LLVM IR and into the
 // control-flow graph as Graphviz dot; highlight.js themes the dot (a port of
 // scripts/highlight.py); and the Graphviz wasm lays it out as SVG. All three
 // used to be a server round-trip; now they run in the browser, here in a

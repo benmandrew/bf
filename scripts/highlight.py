@@ -225,7 +225,7 @@ def rejoin_wraps(lines):
 
     The halves have to be put back together before tokenising. A wrap
     lands inside a quoted identifier often enough to matter -- block
-    names carry Brainfuck source spans, which are long and need quoting
+    names carry bf source spans, which are long and need quoting
     -- and half of one leaves an unterminated quote, which defeats the
     string rule and gets the fragments read as ordinary code.
     """

@@ -16,7 +16,7 @@ void print_usage(const char *program_name) {
                "characters\n");
         printf("  -h, --help           Show this help message\n");
         printf("\nArguments:\n");
-        printf("  input_file           Brainfuck source file to execute\n");
+        printf("  input_file           bf source file to execute\n");
 }
 
 static struct option long_options[] = {{"byte-output", no_argument, 0, 'b'},
